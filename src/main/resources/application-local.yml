@@ -1,0 +1,36 @@
+# Local Development Configuration Profile
+
+spring:
+  # Database Configuration - Local
+  datasource:
+    url: jdbc:mysql://localhost:3306/backend_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: backend_user
+    password: backend_password
+
+  # Redis Configuration - Local Docker Compose
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  # Cache Configuration - Local
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000  # 10 minutes for local dev
+      cache-null-values: false
+
+# Logging - More verbose for development
+logging:
+  level:
+    root: INFO
+    com.example.backend: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG           # Show SQL queries
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # Show SQL parameters

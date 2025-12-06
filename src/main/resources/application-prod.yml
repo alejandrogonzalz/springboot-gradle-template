@@ -1,0 +1,82 @@
+# Production Configuration Profile
+
+spring:
+  # Database Configuration - Production
+  datasource:
+    url: ${DB_URL:jdbc:mysql://production-db-host:3306/backend_db?useSSL=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:backend_user}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:10}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # JPA Configuration - Production
+  jpa:
+    hibernate:
+      ddl-auto: validate  # NEVER use 'update' or 'create' in production!
+    show-sql: false
+
+  # Redis Configuration - AWS ElastiCache
+  data:
+    redis:
+      host: ${REDIS_HOST:your-elasticache-cluster.cache.amazonaws.com}
+      port: ${REDIS_PORT:6379}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:true}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+          max-wait: 5000ms
+        shutdown-timeout: 200ms
+      # For ElastiCache with AUTH enabled
+      password: ${REDIS_PASSWORD:#{null}}
+
+  # Cache Configuration - Production
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000  # 1 hour default TTL
+      cache-null-values: false
+      use-key-prefix: true
+      key-prefix: "backend:cache:"
+
+# Server Configuration - Production
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: never      # Don't expose validation details
+    include-stacktrace: never          # Never show stack traces in prod
+    include-exception: false
+  compression:
+    enabled: true
+
+# Actuator Configuration - Production
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never              # Hide health details from public
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: production
+
+# Logging Configuration - Production
+logging:
+  level:
+    root: WARN
+    com.example.backend: INFO           # Less verbose in production
+    org.springframework.web: WARN
+    org.hibernate: WARN
+  file:
+    name: /var/log/backend/application.log

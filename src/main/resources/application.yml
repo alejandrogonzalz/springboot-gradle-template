@@ -47,6 +47,18 @@ spring:
       fail-on-unknown-properties: false
     default-property-inclusion: non_null
 
+  # Redis Configuration (Local Development)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
 # Server Configuration
 server:
   port: 8080

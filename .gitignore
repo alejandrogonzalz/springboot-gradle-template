@@ -51,3 +51,6 @@ daemon/
 caches/
 native/
 tmp/
+.tmp/
+jdks/
+wrapper/
