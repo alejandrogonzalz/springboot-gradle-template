@@ -1,4 +1,4 @@
-package com.example.backend.dto;
+package com.example.backend.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;

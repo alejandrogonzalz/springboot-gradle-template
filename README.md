@@ -82,7 +82,7 @@ This will start:
 ### 3. Run the Application
 
 ```bash
-./gradlew bootRun
+./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
 The application will be available at: `http://localhost:8080`

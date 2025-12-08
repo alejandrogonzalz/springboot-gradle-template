@@ -8,7 +8,7 @@ plugins {
 
 group = "com.example"
 version = "1.0.0"
-java.sourceCompatibility = JavaVersion.VERSION_17
+java.sourceCompatibility = JavaVersion.VERSION_21
 
 configurations {
     compileOnly {
@@ -28,6 +28,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    implementation("org.springframework.boot:spring-boot-starter-security")
 
     // Database - MySQL
     runtimeOnly("com.mysql:mysql-connector-j")
@@ -37,9 +38,14 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-mysql")
 
+    // JWT Authentication
+    implementation("io.jsonwebtoken:jjwt-api:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
+
     // Lombok for reducing boilerplate
-    compileOnly("org.projectlombok:lombok:1.18.30")
-    annotationProcessor("org.projectlombok:lombok:1.18.30")
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
 
     // Mapping utilities
     implementation("org.mapstruct:mapstruct:1.5.5.Final")
@@ -65,8 +71,8 @@ dependencies {
     testImplementation("io.rest-assured:rest-assured:5.4.0")
 
     // For Lombok in tests
-    testCompileOnly("org.projectlombok:lombok:1.18.30")
-    testAnnotationProcessor("org.projectlombok:lombok:1.18.30")
+    testCompileOnly("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
 }
 
 tasks.named<Test>("test") {
@@ -113,4 +119,14 @@ tasks.withType<Checkstyle> {
     configFile = file("${projectDir}/config/checkstyle/checkstyle.xml")
     isIgnoreFailures = true
     maxWarnings = 100
+}
+
+tasks.clean {
+    doLast {
+        val logsDir = file("${projectDir}/logs")
+        if (logsDir.exists()) {
+            logsDir.listFiles()?.filter { it.extension == "log" }?.forEach { it.delete() }
+        }
+        println("Logs deleted successfully")
+    }
 }

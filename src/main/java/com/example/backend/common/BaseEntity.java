@@ -1,4 +1,4 @@
-package com.example.backend.entity;
+package com.example.backend.common;
 
 import jakarta.persistence.*;
 import lombok.Getter;

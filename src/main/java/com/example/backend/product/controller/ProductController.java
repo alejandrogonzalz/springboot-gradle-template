@@ -1,8 +1,8 @@
-package com.example.backend.controller;
+package com.example.backend.product.controller;
 
-import com.example.backend.dto.ApiResponse;
-import com.example.backend.dto.ProductDto;
-import com.example.backend.service.ProductService;
+import com.example.backend.common.ApiResponse;
+import com.example.backend.product.dto.ProductDto;
+import com.example.backend.product.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

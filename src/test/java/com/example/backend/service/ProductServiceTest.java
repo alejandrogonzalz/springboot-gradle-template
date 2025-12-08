@@ -1,11 +1,12 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.ProductDto;
-import com.example.backend.entity.Product;
+import com.example.backend.product.dto.ProductDto;
+import com.example.backend.product.entity.Product;
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
-import com.example.backend.mapper.ProductMapper;
-import com.example.backend.repository.ProductRepository;
+import com.example.backend.product.mapper.ProductMapper;
+import com.example.backend.product.service.ProductService;
+import com.example.backend.product.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

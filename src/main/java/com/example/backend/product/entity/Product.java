@@ -1,5 +1,6 @@
-package com.example.backend.entity;
+package com.example.backend.product.entity;
 
+import com.example.backend.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;

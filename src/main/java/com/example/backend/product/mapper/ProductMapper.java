@@ -1,7 +1,7 @@
-package com.example.backend.mapper;
+package com.example.backend.product.mapper;
 
-import com.example.backend.dto.ProductDto;
-import com.example.backend.entity.Product;
+import com.example.backend.product.dto.ProductDto;
+import com.example.backend.product.entity.Product;
 import org.mapstruct.*;
 
 import java.util.List;
