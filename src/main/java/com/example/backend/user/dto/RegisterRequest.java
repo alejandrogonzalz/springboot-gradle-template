@@ -11,9 +11,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * DTO for user registration requests.
- */
+/** DTO for user registration requests. */
 @Data
 @Builder
 @NoArgsConstructor
@@ -21,32 +19,32 @@ import lombok.NoArgsConstructor;
 @Schema(description = "User registration request")
 public class RegisterRequest {
 
-    @NotBlank(message = "Username is required")
-    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
-    @Schema(description = "Username", example = "johndoe")
-    private String username;
+  @NotBlank(message = "Username is required")
+  @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+  @Schema(description = "Username", example = "johndoe")
+  private String username;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters")
-    @Schema(description = "Password", example = "SecurePass123!")
-    private String password;
+  @NotBlank(message = "Password is required")
+  @Size(min = 8, message = "Password must be at least 8 characters")
+  @Schema(description = "Password", example = "SecurePass123!")
+  private String password;
 
-    @NotBlank(message = "First name is required")
-    @Size(max = 100, message = "First name must not exceed 100 characters")
-    @Schema(description = "First name", example = "John")
-    private String firstName;
+  @NotBlank(message = "First name is required")
+  @Size(max = 100, message = "First name must not exceed 100 characters")
+  @Schema(description = "First name", example = "John")
+  private String firstName;
 
-    @NotBlank(message = "Last name is required")
-    @Size(max = 100, message = "Last name must not exceed 100 characters")
-    @Schema(description = "Last name", example = "Doe")
-    private String lastName;
+  @NotBlank(message = "Last name is required")
+  @Size(max = 100, message = "Last name must not exceed 100 characters")
+  @Schema(description = "Last name", example = "Doe")
+  private String lastName;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Email must be valid")
-    @Schema(description = "Email address", example = "john.doe@example.com")
-    private String email;
+  @NotBlank(message = "Email is required")
+  @Email(message = "Email must be valid")
+  @Schema(description = "Email address", example = "john.doe@example.com")
+  private String email;
 
-    @NotNull(message = "Role is required")
-    @Schema(description = "User role", example = "USER")
-    private UserRole userRole;
+  @NotNull(message = "Role is required")
+  @Schema(description = "User role", example = "USER")
+  private UserRole userRole;
 }

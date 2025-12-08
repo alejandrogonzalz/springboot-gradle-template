@@ -4,6 +4,8 @@ plugins {
     id("io.spring.dependency-management") version "1.1.4"
     jacoco
     id("checkstyle")
+    id("com.diffplug.spotless") version "6.23.3"
+    id("com.github.jakemarsden.git-hooks") version "0.0.2"
 }
 
 group = "com.example"
@@ -119,6 +121,38 @@ tasks.withType<Checkstyle> {
     configFile = file("${projectDir}/config/checkstyle/checkstyle.xml")
     isIgnoreFailures = true
     maxWarnings = 100
+    
+    doLast {
+        val reportFile = reports.html.outputLocation.get().asFile
+        if (reportFile.exists()) {
+            println("\n✅ Checkstyle report: file://${reportFile.absolutePath}")
+        }
+    }
+}
+
+spotless {
+    java {
+        googleJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+gitHooks {
+    setHooks(mapOf(
+        "pre-commit" to "spotlessCheck",
+        "commit-msg" to """
+            #!/bin/bash
+            commit_msg=${'$'}(cat ${'$'}1)
+            if ! echo "${'$'}commit_msg" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: [A-Z].{0,99}${'$'}"; then
+                echo "❌ Invalid commit message format!"
+                echo "Format: <type>(scope): <Subject starting with capital letter>"
+                echo "Types: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert"
+                exit 1
+            fi
+        """.trimIndent()
+    ))
 }
 
 tasks.clean {
