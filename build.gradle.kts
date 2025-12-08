@@ -155,6 +155,32 @@ gitHooks {
     ))
 }
 
+tasks.register("generateOpenApiSpec") {
+    group = "documentation"
+    description = "Generate OpenAPI spec file and Zod schemas for frontend"
+    
+    doLast {
+        val outputDir = file("src/api")
+        outputDir.mkdirs()
+        
+        println("📥 Downloading OpenAPI spec...")
+        exec {
+            commandLine("curl", "http://localhost:8080/v3/api-docs", "-o", "openapi.json")
+        }
+        
+        println("🔧 Generating Zod schemas...")
+        exec {
+            commandLine("npx", "openapi-zod-client", "openapi.json", "-o", "src/api/schemas.ts")
+        }
+
+        exec {
+            commandLine("rm", "openapi.json")
+        }
+        
+        println("✅ Generated:")
+    }
+}
+
 tasks.clean {
     doLast {
         val logsDir = file("${projectDir}/logs")
