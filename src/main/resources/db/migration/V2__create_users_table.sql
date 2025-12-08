@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
-    role ENUM('admin', 'user', 'guest') NOT NULL,
+    role ENUM('ADMIN', 'USER', 'GUEST') NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_date TIMESTAMP NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -20,19 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Create user_permissions table (for ElementCollection)
 CREATE TABLE IF NOT EXISTS user_permissions (
     user_id BIGINT NOT NULL,
-    permission ENUM('read', 'create', 'update', 'delete', 'admin', 'manage_users', 'view_audit_logs') NOT NULL,
+    permission ENUM('READ', 'CREATE', 'UPDATE', 'DELETE', 'ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOGS') NOT NULL,
     PRIMARY KEY (user_id, permission),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Insert default admin user (password: Admin123!)
-INSERT INTO users (username, password_hash, first_name, last_name, email, role, is_active)
-VALUES (
-    'admin',
-    '$2a$10$qXMf7YhB1FkVs/yRtSMfLeXKFZFZK9JBvJY9cBRY.nRXqVBJZ.qKK',
-    'System',
-    'Administrator',
-    'admin@example.com',
-    'ADMIN',
-    true
-);

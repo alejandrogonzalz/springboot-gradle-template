@@ -1,8 +1,11 @@
 package com.example.backend;
 
+import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.entity.UserRole;
+import com.example.backend.user.service.AuthenticationService;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
@@ -25,13 +28,12 @@ import java.sql.Connection;
 @SpringBootApplication
 @EnableCaching
 @EnableJpaAuditing
+@RequiredArgsConstructor
 public class BackendApplication {
 
-    @Autowired
-    private Environment env;
-
-    @Autowired
-    private DataSource dataSource;
+    private final Environment env;
+    private final DataSource dataSource;
+    private final AuthenticationService authenticationService;
 
     public static void main(String[] args) {
         log.info("╔════════════════════════════════════════════════════════════════╗");
@@ -98,6 +100,27 @@ public class BackendApplication {
 
         // Test database connection
         testDatabaseConnection();
+
+        // Create default admin user
+        createDefaultUser();
+    }
+
+    private void createDefaultUser() {
+        try {
+            RegisterRequest request = RegisterRequest.builder()
+                    .username("admin")
+                    .password("Admin123!")
+                    .firstName("Admin")
+                    .lastName("User")
+                    .email("admin@example.com")
+                    .userRole(UserRole.ADMIN)
+                    .build();
+
+            authenticationService.register(request);
+            log.info("✅ Default admin user created successfully");
+        } catch (Exception e) {
+            log.warn("⚠️  Default user creation skipped: {}", e.getMessage());
+        }
     }
 
     private void testDatabaseConnection() {

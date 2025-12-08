@@ -1,5 +1,6 @@
 package com.example.backend.user.dto;
 
+import com.example.backend.user.entity.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -43,4 +44,8 @@ public class RegisterRequest {
     @Email(message = "Email must be valid")
     @Schema(description = "Email address", example = "john.doe@example.com")
     private String email;
+
+    @NotBlank(message = "Role is required")
+    @Schema(description = "User role", example = "USER")
+    private UserRole userRole;
 }

@@ -1,18 +1,21 @@
 package com.example.backend.user.service;
 
+import com.example.backend.common.utils.TestUtils;
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
 import com.example.backend.user.dto.LoginRequest;
 import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.entity.User;
-import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +42,7 @@ public class AuthenticationService {
      */
     @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
-        log.info("Registering new user: {}", request.getUsername());
+        log.info("Registering new user: {}", TestUtils.toJsonString(request));
 
         // Check if username already exists
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -54,7 +57,7 @@ public class AuthenticationService {
         // Create user entity
         User user = userMapper.toEntity(request);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRole(UserRole.USER); // Default role
+        user.setRole(request.getUserRole());
         user.setIsActive(true);
 
         // Save user
@@ -81,36 +84,39 @@ public class AuthenticationService {
      */
     @Transactional
     public AuthenticationResponse login(LoginRequest request) {
-        log.info("User login attempt: {}", request.getUsername());
+        log.info("User login attempt for username: {}", request.getUsername());
 
-        // Authenticate user
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
-        );
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getUsername(),
+                            request.getPassword()
+                    )
+            );
 
-        // Load user
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new IllegalStateException("User not found after authentication"));
+            User user = (User) authentication.getPrincipal();
 
-        // Update last login date
-        user.updateLastLoginDate();
-        userRepository.save(user);
+            // Update last login date
+            user.updateLastLoginDate();
+            userRepository.save(user);
 
-        // Generate tokens
-        String accessToken = jwtService.generateToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+            // Generate tokens
+            String accessToken = jwtService.generateToken(user);
+            String refreshToken = jwtService.generateRefreshToken(user);
 
-        log.info("User logged in successfully: {}", user.getUsername());
+            log.info("User logged in successfully: {}", user.getUsername());
 
-        return AuthenticationResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .expiresIn(86400000L)
-                .build();
+            return AuthenticationResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .tokenType("Bearer")
+                    .expiresIn(86400000L)
+                    .build();
+
+        } catch (AuthenticationException e) {
+            log.warn("Authentication failed for username: {}", request.getUsername());
+            throw new BadCredentialsException("Invalid username or password");
+        }
     }
 
     /**
