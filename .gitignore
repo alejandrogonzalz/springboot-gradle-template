@@ -54,3 +54,6 @@ tmp/
 .tmp/
 jdks/
 wrapper/
+
+### API Zodios schema ###
+src/api
