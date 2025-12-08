@@ -4,6 +4,7 @@ import com.example.backend.user.entity.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,7 +46,7 @@ public class RegisterRequest {
     @Schema(description = "Email address", example = "john.doe@example.com")
     private String email;
 
-    @NotBlank(message = "Role is required")
+    @NotNull(message = "Role is required")
     @Schema(description = "User role", example = "USER")
     private UserRole userRole;
 }
