@@ -15,7 +15,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-/** REST controller for user management operations. */
+/**
+ * REST controller for user management operations. Uses Spring Security's @PreAuthorize with
+ * authority-based access control.
+ */
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -29,7 +32,7 @@ public class UserController {
   @Operation(
       summary = "Get all users",
       description = "Retrieves all users with optional filtering and pagination")
-  @PreAuthorize("hasAuthority('READ')")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<Page<UserDto>>> getAllUsers(
       @RequestParam(required = false) String username,
       @RequestParam(required = false) String email,
@@ -42,7 +45,7 @@ public class UserController {
 
   @GetMapping("/{id}")
   @Operation(summary = "Get user by ID", description = "Retrieves a specific user by their ID")
-  @PreAuthorize("hasAuthority('READ')")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable Long id) {
     UserDto user = userService.getUserById(id);
     return ResponseEntity.ok(ApiResponse.success(user, "User retrieved successfully"));
@@ -52,7 +55,7 @@ public class UserController {
   @Operation(
       summary = "Get user by username",
       description = "Retrieves a specific user by their username")
-  @PreAuthorize("hasAuthority('READ')")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<UserDto>> getUserByUsername(@PathVariable String username) {
     UserDto user = userService.getUserByUsername(username);
     return ResponseEntity.ok(ApiResponse.success(user, "User retrieved successfully"));
@@ -60,7 +63,7 @@ public class UserController {
 
   @PutMapping("/{id}")
   @Operation(summary = "Update user", description = "Updates an existing user")
-  @PreAuthorize("hasAuthority('UPDATE') or #id == authentication.principal.id")
+  @PreAuthorize("hasAuthority('PERMISSION_UPDATE') or #id == authentication.principal.id")
   public ResponseEntity<ApiResponse<UserDto>> updateUser(
       @PathVariable Long id, @RequestBody UserDto userDto) {
     UserDto updatedUser = userService.updateUser(id, userDto);
@@ -69,7 +72,7 @@ public class UserController {
 
   @DeleteMapping("/{id}")
   @Operation(summary = "Delete user", description = "Deletes a user by ID")
-  @PreAuthorize("hasAuthority('DELETE') or hasAuthority('ADMIN')")
+  @PreAuthorize("hasAuthority('PERMISSION_DELETE') or hasAuthority('PERMISSION_ADMIN')")
   public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
     userService.deleteUser(id);
     return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));

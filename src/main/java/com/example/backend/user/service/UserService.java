@@ -130,9 +130,6 @@ public class UserService implements UserDetailsService {
     if (userDto.getRole() != null) {
       user.setRole(userDto.getRole());
     }
-    if (userDto.getPermissions() != null) {
-      user.setPermissions(userDto.getPermissions());
-    }
 
     User savedUser = userRepository.save(user);
     return userMapper.toDto(savedUser);

@@ -22,5 +22,6 @@ CREATE TABLE IF NOT EXISTS user_permissions (
     user_id BIGINT NOT NULL,
     permission ENUM('READ', 'CREATE', 'UPDATE', 'DELETE', 'ADMIN', 'MANAGE_USERS', 'VIEW_AUDIT_LOGS') NOT NULL,
     PRIMARY KEY (user_id, permission),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_permissions_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

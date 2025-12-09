@@ -41,6 +41,7 @@ public class SecurityConfig {
                 auth
                     // Public endpoints
                     .requestMatchers(
+                        "api/v1/**", // Remove this once to protect the endpoints
                         "/api/v1/auth/**",
                         "/api-docs/**",
                         "/v3/api-docs/**",

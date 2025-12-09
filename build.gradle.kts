@@ -141,7 +141,7 @@ spotless {
 
 gitHooks {
     setHooks(mapOf(
-        "pre-commit" to "spotlessCheck",
+        "pre-commit" to "preCommit",
         "commit-msg" to """
             #!/bin/bash
             commit_msg=${'$'}(cat ${'$'}1)
@@ -153,6 +153,31 @@ gitHooks {
             fi
         """.trimIndent()
     ))
+}
+
+
+tasks.test {
+    doLast {
+        val reportPath = file("build/reports/tests/test/index.html").absolutePath
+        println("\n📊 Test report: file://$reportPath")
+    }
+}
+
+tasks.clean {
+    doLast {
+        val logsDir = file("${projectDir}/logs")
+        if (logsDir.exists()) {
+            logsDir.listFiles()?.filter { it.extension == "log" }?.forEach { it.delete() }
+        }
+        println("Logs deleted successfully")
+    }
+}
+
+
+tasks.register("preCommit") {
+    dependsOn("spotlessApply", "test")
+    group = "verification"
+    description = "Runs spotless formatting and unit tests"
 }
 
 tasks.register("generateOpenApiSpec") {
@@ -178,15 +203,5 @@ tasks.register("generateOpenApiSpec") {
         }
         
         println("✅ Generated:")
-    }
-}
-
-tasks.clean {
-    doLast {
-        val logsDir = file("${projectDir}/logs")
-        if (logsDir.exists()) {
-            logsDir.listFiles()?.filter { it.extension == "log" }?.forEach { it.delete() }
-        }
-        println("Logs deleted successfully")
     }
 }
