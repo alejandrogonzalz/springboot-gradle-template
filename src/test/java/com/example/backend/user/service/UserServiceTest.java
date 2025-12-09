@@ -55,7 +55,6 @@ class UserServiceTest {
             .email("test@example.com")
             .role(UserRole.USER)
             .isActive(true)
-            .permissions(new HashSet<>())
             .createdAt(Instant.now())
             .updatedAt(Instant.now())
             .build();

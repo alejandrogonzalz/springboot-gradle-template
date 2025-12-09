@@ -175,7 +175,7 @@ tasks.clean {
 
 
 tasks.register("preCommit") {
-    dependsOn("spotlessApply", "test")
+    dependsOn("spotlessCheck", "test")
     group = "verification"
     description = "Runs spotless formatting and unit tests"
 }

@@ -15,7 +15,6 @@ import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -72,7 +71,6 @@ class AuthenticationServiceTest {
             .email("test@example.com")
             .role(UserRole.USER)
             .isActive(true)
-            .permissions(new HashSet<>())
             .createdAt(Instant.now())
             .updatedAt(Instant.now())
             .build();
