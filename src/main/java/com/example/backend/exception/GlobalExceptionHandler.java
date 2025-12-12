@@ -9,7 +9,10 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -140,9 +143,64 @@ public class GlobalExceptionHandler {
    * @return error response with 401 status
    */
   @ExceptionHandler(BadCredentialsException.class)
-  public ResponseEntity<ApiResponse> handleAuthenticationException(BadCredentialsException ex) {
-    ApiResponse response = ApiResponse.builder().success(false).message(ex.getMessage()).build();
+  public ResponseEntity<ApiResponse<Map<String, String>>> handleAuthenticationException(
+      BadCredentialsException ex) {
+    ApiResponse<Map<String, String>> response =
+        ApiResponse.<Map<String, String>>builder().success(false).message(ex.getMessage()).build();
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+  }
+
+  /**
+   * Handles Spring Security access denied exceptions with detailed information.
+   *
+   * <p>Provides information about:
+   *
+   * <ul>
+   *   <li>The user who was denied access
+   *   <li>Their current authorities
+   *   <li>The action they attempted
+   * </ul>
+   *
+   * @param ex the exception
+   * @return error response with 403 status
+   */
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ApiResponse<Map<String, String>>> handleAccessDeniedException(
+      AccessDeniedException ex) {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+    // Check if user is actually authenticated
+    boolean isAuthenticated =
+        auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName());
+    if (!isAuthenticated) {
+      log.warn("Access denied - User not authenticated");
+
+      ApiResponse<Map<String, String>> response =
+          ApiResponse.<Map<String, String>>builder()
+              .success(false)
+              .message("Authentication required. Please log in to access this resource.")
+              .build();
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    // User is logged in but lacks permission
+    String username = auth.getName();
+    String authorities = auth.getAuthorities().toString();
+
+    log.warn(
+        "Access denied for authenticated user '{}' with authorities: {}", username, authorities);
+
+    Map<String, String> details = new HashMap<>();
+    details.put("user", username);
+    details.put("authorities", authorities);
+
+    ApiResponse<Map<String, String>> response =
+        ApiResponse.<Map<String, String>>builder()
+            .success(false)
+            .message("Access denied. You do not have the required permissions for this operation.")
+            .data(details)
+            .build();
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
   }
 
   /**

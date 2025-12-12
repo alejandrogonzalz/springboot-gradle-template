@@ -107,18 +107,20 @@ public class BackendApplication {
 
   private void createDefaultUser() {
     try {
-      RegisterRequest request =
-          RegisterRequest.builder()
-              .username("admin")
-              .password("Admin123!")
-              .firstName("Admin")
-              .lastName("User")
-              .email("admin@example.com")
-              .userRole(UserRole.ADMIN)
-              .build();
+      for (int i = 1; i <= 10; i++) {
+        RegisterRequest request =
+            RegisterRequest.builder()
+                .username("user" + i)
+                .password("User123!")
+                .firstName("User")
+                .lastName(String.valueOf(i))
+                .email("user" + i + "@example.com")
+                .userRole(i == 1 ? UserRole.ADMIN : UserRole.USER)
+                .build();
 
-      authenticationService.register(request);
-      log.info("✅ Default admin user created successfully");
+        authenticationService.register(request);
+      }
+      log.info("✅ 10 default users created successfully (user1-user10)");
     } catch (Exception e) {
       log.warn("⚠️  Default user creation skipped: {}", e.getMessage());
     }
@@ -196,9 +198,9 @@ public class BackendApplication {
     log.info("💊 Health Check:");
     log.info("   • Actuator:   {}://localhost:{}/actuator/health", protocol, serverPort);
     log.info("");
-    log.info("🔐 Default Admin Credentials:");
-    log.info("   • Username: admin");
-    log.info("   • Password: Admin123!");
+    log.info("🔐 Default User Credentials:");
+    log.info("   • Admin: user1 / User123!");
+    log.info("   • Users: user2-user10 / User123!");
     log.info("");
     log.info("╔════════════════════════════════════════════════════════════════╗");
     log.info("║          Ready to accept requests!                             ║");

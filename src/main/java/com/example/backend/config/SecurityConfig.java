@@ -1,5 +1,6 @@
 package com.example.backend.config;
 
+import com.example.backend.security.JwtAuthenticationEntryPoint;
 import com.example.backend.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -32,6 +33,7 @@ public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthFilter;
   private final UserDetailsService userDetailsService;
+  private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -41,7 +43,6 @@ public class SecurityConfig {
                 auth
                     // Public endpoints
                     .requestMatchers(
-                        "api/v1/**", // Remove this once to protect the endpoints
                         "/api/v1/auth/**",
                         "/api-docs/**",
                         "/v3/api-docs/**",
@@ -57,6 +58,8 @@ public class SecurityConfig {
                     .authenticated())
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(
+            exceptions -> exceptions.authenticationEntryPoint(jwtAuthenticationEntryPoint))
         .authenticationProvider(authenticationProvider())
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

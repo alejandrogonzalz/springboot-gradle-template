@@ -4,6 +4,7 @@ import com.example.backend.common.utils.TestUtils;
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
+import com.example.backend.user.dto.AuthenticationResponse.UserInfo;
 import com.example.backend.user.dto.LoginRequest;
 import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.entity.User;
@@ -36,33 +37,28 @@ public class AuthenticationService {
    * Registers a new user.
    *
    * @param request the registration request
-   * @return authentication response with JWT tokens
+   * @return authentication response with JWT tokens and user info
    */
   @Transactional
   public AuthenticationResponse register(RegisterRequest request) {
     log.info("Registering new user: {}", TestUtils.toJsonString(request));
 
-    // Check if username already exists
     if (userRepository.existsByUsername(request.getUsername())) {
       throw new DuplicateResourceException("Username already exists: " + request.getUsername());
     }
 
-    // Check if email already exists
     if (userRepository.existsByEmail(request.getEmail())) {
       throw new DuplicateResourceException("Email already exists: " + request.getEmail());
     }
 
-    // Create user entity
     User user = userMapper.toEntity(request);
     user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
     user.setRole(request.getUserRole());
     user.setIsActive(true);
 
-    // Save user
     User savedUser = userRepository.save(user);
     log.info("User registered successfully with id: {}", savedUser.getId());
 
-    // Generate tokens
     String accessToken = jwtService.generateToken(savedUser);
     String refreshToken = jwtService.generateRefreshToken(savedUser);
 
@@ -70,7 +66,8 @@ public class AuthenticationService {
         .accessToken(accessToken)
         .refreshToken(refreshToken)
         .tokenType("Bearer")
-        .expiresIn(86400000L) // 24 hours in milliseconds
+        .expiresIn(86400000L)
+        .user(buildUserInfo(savedUser))
         .build();
   }
 
@@ -78,7 +75,7 @@ public class AuthenticationService {
    * Authenticates a user and generates JWT tokens.
    *
    * @param request the login request
-   * @return authentication response with JWT tokens
+   * @return authentication response with JWT tokens and user info
    */
   @Transactional
   public AuthenticationResponse login(LoginRequest request) {
@@ -92,11 +89,9 @@ public class AuthenticationService {
 
       User user = (User) authentication.getPrincipal();
 
-      // Update last login date
       user.updateLastLoginDate();
       userRepository.save(user);
 
-      // Generate tokens
       String accessToken = jwtService.generateToken(user);
       String refreshToken = jwtService.generateRefreshToken(user);
 
@@ -107,6 +102,7 @@ public class AuthenticationService {
           .refreshToken(refreshToken)
           .tokenType("Bearer")
           .expiresIn(86400000L)
+          .user(buildUserInfo(user))
           .build();
 
     } catch (AuthenticationException e) {
@@ -141,6 +137,25 @@ public class AuthenticationService {
         .refreshToken(refreshToken)
         .tokenType("Bearer")
         .expiresIn(86400000L)
+        .user(buildUserInfo(user))
+        .build();
+  }
+
+  /**
+   * Builds UserInfo from User entity.
+   *
+   * @param user the user entity
+   * @return UserInfo DTO
+   */
+  private UserInfo buildUserInfo(User user) {
+    return UserInfo.builder()
+        .username(user.getUsername())
+        .email(user.getEmail())
+        .firstName(user.getFirstName())
+        .lastName(user.getLastName())
+        .role(user.getRole())
+        .permissions(user.getAdditionalPermissions())
+        .isActive(user.getIsActive())
         .build();
   }
 }
