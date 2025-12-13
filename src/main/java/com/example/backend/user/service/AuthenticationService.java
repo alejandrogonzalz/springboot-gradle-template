@@ -4,8 +4,11 @@ import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
 import com.example.backend.user.dto.AuthenticationResponse.UserInfo;
 import com.example.backend.user.dto.LoginRequest;
+import com.example.backend.user.entity.RefreshToken;
 import com.example.backend.user.entity.User;
+import com.example.backend.user.repository.RefreshTokenRepository;
 import com.example.backend.user.repository.UserRepository;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthenticationService {
 
   private final UserRepository userRepository;
+  private final RefreshTokenRepository refreshTokenRepository;
   private final JwtService jwtService;
   private final AuthenticationManager authenticationManager;
 
@@ -47,8 +51,23 @@ public class AuthenticationService {
       user.updateLastLoginDate();
       userRepository.save(user);
 
+      // 🔒 SINGLE SESSION: Delete all existing refresh tokens for this user
+      // This ensures user can only be logged in on ONE device at a time
+      refreshTokenRepository.deleteByUser(user);
+
       String accessToken = jwtService.generateToken(user);
       String refreshToken = jwtService.generateRefreshToken(user);
+
+      // Store refresh token in database
+      RefreshToken refreshTokenEntity =
+          RefreshToken.builder()
+              .token(refreshToken)
+              .user(user)
+              .expiresAt(Instant.now().plusSeconds(604800)) // 7 days
+              .build();
+      refreshTokenRepository.save(refreshTokenEntity);
+
+      log.debug("Refresh token stored in database for user: {}", user.getUsername());
 
       log.info("User logged in successfully: {}", user.getUsername());
 
@@ -56,7 +75,7 @@ public class AuthenticationService {
           .accessToken(accessToken)
           .refreshToken(refreshToken)
           .tokenType("Bearer")
-          .expiresIn(86400000L)
+          .expiresIn(900000L) // 15 minutes
           .user(buildUserInfo(user))
           .build();
 
@@ -79,6 +98,18 @@ public class AuthenticationService {
       throw new IllegalArgumentException("Refresh token is empty");
     }
 
+    // Check if token exists in database
+    RefreshToken storedToken =
+        refreshTokenRepository
+            .findByToken(refreshToken)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+
+    // Check if token is expired
+    if (storedToken.isExpired()) {
+      refreshTokenRepository.delete(storedToken);
+      throw new IllegalArgumentException("Refresh token has expired");
+    }
+
     String username = jwtService.extractUsername(refreshToken);
     User user =
         userRepository
@@ -91,13 +122,29 @@ public class AuthenticationService {
 
     String newAccessToken = jwtService.generateToken(user);
 
+    // Return same refresh token (no rotation)
     return AuthenticationResponse.builder()
         .accessToken(newAccessToken)
         .refreshToken(refreshToken)
         .tokenType("Bearer")
-        .expiresIn(86400000L)
+        .expiresIn(900000L) // 15 minutes
         .user(buildUserInfo(user))
         .build();
+  }
+
+  /**
+   * Logs out a user by deleting their refresh token from the database.
+   *
+   * @param refreshToken the refresh token to invalidate
+   */
+  @Transactional
+  public void logout(String refreshToken) {
+    if (refreshToken != null && !refreshToken.isEmpty()) {
+      refreshTokenRepository.deleteByToken(refreshToken);
+      log.info("User logged out successfully - refresh token deleted");
+    } else {
+      log.debug("No refresh token provided for logout");
+    }
   }
 
   /**

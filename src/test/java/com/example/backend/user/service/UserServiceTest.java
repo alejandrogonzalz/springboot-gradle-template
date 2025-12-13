@@ -2,11 +2,14 @@ package com.example.backend.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
+import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
@@ -29,6 +32,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserService Unit Tests")
@@ -38,10 +42,13 @@ class UserServiceTest {
 
   @Mock private UserMapper userMapper;
 
+  @Mock private PasswordEncoder passwordEncoder;
+
   @InjectMocks private UserService userService;
 
   private User testUser;
   private UserDto testUserDto;
+  private RegisterRequest registerRequest;
 
   @BeforeEach
   void setUp() {
@@ -72,6 +79,84 @@ class UserServiceTest {
             .createdAt(Instant.now())
             .updatedAt(Instant.now())
             .build();
+
+    registerRequest =
+        RegisterRequest.builder()
+            .username("newuser")
+            .password("Password123!")
+            .email("newuser@example.com")
+            .firstName("New")
+            .lastName("User")
+            .userRole(UserRole.USER)
+            .build();
+  }
+
+  @Test
+  @DisplayName("Register user - should create new user successfully")
+  void registerUser_WithValidData_ShouldCreateUser() {
+    // Given
+    User newUser =
+        User.builder()
+            .id(10L)
+            .username("newuser")
+            .email("newuser@example.com")
+            .firstName("New")
+            .lastName("User")
+            .role(UserRole.USER)
+            .isActive(true)
+            .build();
+
+    when(userRepository.existsByUsername("newuser")).thenReturn(false);
+    when(userRepository.existsByEmail("newuser@example.com")).thenReturn(false);
+    when(userMapper.toEntity(registerRequest)).thenReturn(newUser);
+    when(passwordEncoder.encode("Password123!")).thenReturn("hashedPassword");
+    when(userRepository.save(any(User.class))).thenReturn(newUser);
+
+    // When
+    User result = userService.registerUser(registerRequest);
+
+    // Then
+    assertNotNull(result);
+    assertEquals("newuser", result.getUsername());
+    assertEquals("newuser@example.com", result.getEmail());
+    assertEquals(UserRole.USER, result.getRole());
+    assertTrue(result.getIsActive());
+    verify(userRepository).existsByUsername("newuser");
+    verify(userRepository).existsByEmail("newuser@example.com");
+    verify(passwordEncoder).encode("Password123!");
+    verify(userRepository).save(any(User.class));
+  }
+
+  @Test
+  @DisplayName("Register user - should throw exception when username exists")
+  void registerUser_WithDuplicateUsername_ShouldThrowException() {
+    // Given
+    when(userRepository.existsByUsername("newuser")).thenReturn(true);
+
+    // When & Then
+    assertThatThrownBy(() -> userService.registerUser(registerRequest))
+        .isInstanceOf(DuplicateResourceException.class)
+        .hasMessageContaining("Username already exists: newuser");
+
+    verify(userRepository).existsByUsername("newuser");
+    verify(userRepository, never()).save(any(User.class));
+  }
+
+  @Test
+  @DisplayName("Register user - should throw exception when email exists")
+  void registerUser_WithDuplicateEmail_ShouldThrowException() {
+    // Given
+    when(userRepository.existsByUsername("newuser")).thenReturn(false);
+    when(userRepository.existsByEmail("newuser@example.com")).thenReturn(true);
+
+    // When & Then
+    assertThatThrownBy(() -> userService.registerUser(registerRequest))
+        .isInstanceOf(DuplicateResourceException.class)
+        .hasMessageContaining("Email already exists: newuser@example.com");
+
+    verify(userRepository).existsByUsername("newuser");
+    verify(userRepository).existsByEmail("newuser@example.com");
+    verify(userRepository, never()).save(any(User.class));
   }
 
   @Test

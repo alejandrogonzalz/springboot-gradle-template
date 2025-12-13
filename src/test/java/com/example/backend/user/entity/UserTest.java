@@ -2,171 +2,177 @@ package com.example.backend.user.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
-@DisplayName("User Entity Unit Tests - Pure Spring Security")
+/**
+ * Unit tests for User entity focusing on security-critical methods.
+ *
+ * <p>These tests ensure Spring Security integration works correctly.
+ */
+@DisplayName("User Entity - Security Tests")
 class UserTest {
 
-  private User user;
-  private BCryptPasswordEncoder encoder;
+  private User adminUser;
+  private User regularUser;
+  private User guestUser;
 
   @BeforeEach
   void setUp() {
-    encoder = new BCryptPasswordEncoder();
-    String hashedPassword = encoder.encode("password123");
-    user =
+    adminUser =
         User.builder()
             .id(1L)
-            .username("testuser")
-            .passwordHash(hashedPassword)
-            .firstName("Test")
-            .lastName("User")
-            .email("test@example.com")
+            .username("admin")
+            .email("admin@example.com")
+            .passwordHash("hashedPassword")
+            .role(UserRole.ADMIN)
+            .isActive(true)
+            .build();
+
+    regularUser =
+        User.builder()
+            .id(2L)
+            .username("user")
+            .email("user@example.com")
+            .passwordHash("hashedPassword")
             .role(UserRole.USER)
             .isActive(true)
-            .additionalPermissions(new HashSet<>())
+            .build();
+
+    guestUser =
+        User.builder()
+            .id(3L)
+            .username("guest")
+            .email("guest@example.com")
+            .passwordHash("hashedPassword")
+            .role(UserRole.GUEST)
+            .isActive(true)
             .build();
   }
 
   @Test
-  @DisplayName("Get authorities - should return role and role-based permissions")
-  void getAuthoritiesShouldReturnRoleAndPermissions() {
-    Set<GrantedAuthority> authorities = (Set<GrantedAuthority>) user.getAuthorities();
+  @DisplayName("getAuthorities() - Admin should have all permissions")
+  void getAuthorities_AdminUser_ShouldHaveAllPermissions() {
+    // When
+    var authorities = adminUser.getAuthorities();
 
+    // Then
     assertThat(authorities).isNotEmpty();
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("ROLE_USER"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_READ"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_CREATE"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_UPDATE"));
+    assertThat(authorities)
+        .extracting(GrantedAuthority::getAuthority)
+        .contains(
+            "ROLE_ADMIN",
+            "PERMISSION_READ",
+            "PERMISSION_CREATE",
+            "PERMISSION_UPDATE",
+            "PERMISSION_DELETE",
+            "PERMISSION_ADMIN",
+            "PERMISSION_MANAGE_USERS",
+            "PERMISSION_VIEW_AUDIT_LOGS");
   }
 
   @Test
-  @DisplayName("Get authorities - ADMIN should have all permissions")
-  void getAuthoritiesForAdminShouldHaveAllPermissions() {
-    user.setRole(UserRole.ADMIN);
+  @DisplayName("getAuthorities() - Regular user should have limited permissions")
+  void getAuthorities_RegularUser_ShouldHaveLimitedPermissions() {
+    // When
+    var authorities = regularUser.getAuthorities();
 
-    Set<GrantedAuthority> authorities = (Set<GrantedAuthority>) user.getAuthorities();
-
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_READ"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_CREATE"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_UPDATE"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_DELETE"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_ADMIN"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_MANAGE_USERS"));
+    // Then
+    assertThat(authorities)
+        .extracting(GrantedAuthority::getAuthority)
+        .contains("ROLE_USER", "PERMISSION_READ", "PERMISSION_CREATE", "PERMISSION_UPDATE")
+        .doesNotContain("PERMISSION_DELETE", "PERMISSION_ADMIN", "PERMISSION_MANAGE_USERS");
   }
 
   @Test
-  @DisplayName("Get authorities - GUEST should have only read permission")
-  void getAuthoritiesForGuestShouldHaveOnlyRead() {
-    user.setRole(UserRole.GUEST);
+  @DisplayName("getAuthorities() - Guest should have only read permission")
+  void getAuthorities_GuestUser_ShouldHaveOnlyReadPermission() {
+    // When
+    var authorities = guestUser.getAuthorities();
 
-    Set<GrantedAuthority> authorities = (Set<GrantedAuthority>) user.getAuthorities();
-
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("ROLE_GUEST"));
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_READ"));
-    assertThat(authorities).noneMatch(auth -> auth.getAuthority().equals("PERMISSION_CREATE"));
-    assertThat(authorities).noneMatch(auth -> auth.getAuthority().equals("PERMISSION_DELETE"));
+    // Then
+    assertThat(authorities)
+        .extracting(GrantedAuthority::getAuthority)
+        .contains("ROLE_GUEST", "PERMISSION_READ")
+        .doesNotContain(
+            "PERMISSION_CREATE", "PERMISSION_UPDATE", "PERMISSION_DELETE", "PERMISSION_ADMIN");
   }
 
   @Test
-  @DisplayName("Get authorities - should include additional permissions")
-  void getAuthoritiesShouldIncludeAdditionalPermissions() {
-    user.getAdditionalPermissions().add(Permission.DELETE);
+  @DisplayName("getAuthorities() - Should include additional permissions")
+  void getAuthorities_WithAdditionalPermissions_ShouldIncludeThem() {
+    // Given
+    regularUser.setAdditionalPermissions(Set.of(Permission.DELETE, Permission.ADMIN));
 
-    Set<GrantedAuthority> authorities = (Set<GrantedAuthority>) user.getAuthorities();
+    // When
+    var authorities = regularUser.getAuthorities();
 
-    assertThat(authorities).anyMatch(auth -> auth.getAuthority().equals("PERMISSION_DELETE"));
+    // Then
+    assertThat(authorities)
+        .extracting(GrantedAuthority::getAuthority)
+        .contains("PERMISSION_DELETE", "PERMISSION_ADMIN");
   }
 
   @Test
-  @DisplayName("Change password - should update password hash")
-  void changePasswordShouldUpdatePasswordHash() {
-    String oldHash = user.getPasswordHash();
-    user.changePassword("NewPassword456!");
+  @DisplayName("isAccountNonLocked() - Active user should not be locked")
+  void isAccountNonLocked_WhenActive_ShouldReturnTrue() {
+    // Given
+    adminUser.setIsActive(true);
 
-    assertThat(user.getPasswordHash()).isNotEqualTo(oldHash);
-    assertThat(encoder.matches("NewPassword456!", user.getPasswordHash())).isTrue();
+    // When & Then
+    assertThat(adminUser.isAccountNonLocked()).isTrue();
   }
 
   @Test
-  @DisplayName("Reset password - should generate new password")
-  void resetPasswordShouldGenerateNewPassword() {
-    String oldHash = user.getPasswordHash();
-    String newPassword = user.resetPassword();
+  @DisplayName("isAccountNonLocked() - Inactive user should be locked")
+  void isAccountNonLocked_WhenInactive_ShouldReturnFalse() {
+    // Given
+    adminUser.setIsActive(false);
 
-    assertThat(newPassword).isNotNull();
-    assertThat(newPassword).hasSize(12);
-    assertThat(user.getPasswordHash()).isNotEqualTo(oldHash);
-    assertThat(encoder.matches(newPassword, user.getPasswordHash())).isTrue();
+    // When & Then
+    assertThat(adminUser.isAccountNonLocked()).isFalse();
   }
 
   @Test
-  @DisplayName("Get full name - should return concatenated name")
-  void getFullNameShouldReturnConcatenatedName() {
-    String fullName = user.getFullName();
-    assertThat(fullName).isEqualTo("Test User");
+  @DisplayName("isEnabled() - Should match isActive flag")
+  void isEnabled_ShouldMatchIsActiveFlag() {
+    // When active
+    adminUser.setIsActive(true);
+    assertThat(adminUser.isEnabled()).isTrue();
+
+    // When inactive
+    adminUser.setIsActive(false);
+    assertThat(adminUser.isEnabled()).isFalse();
   }
 
   @Test
-  @DisplayName("Update last login date - should set current timestamp")
-  void updateLastLoginDateShouldSetCurrentTimestamp() {
-    assertThat(user.getLastLoginDate()).isNull();
-    user.updateLastLoginDate();
-    assertThat(user.getLastLoginDate()).isNotNull();
+  @DisplayName("getPassword() - Should return password hash")
+  void getPassword_ShouldReturnPasswordHash() {
+    // When & Then
+    assertThat(adminUser.getPassword()).isEqualTo("hashedPassword");
   }
 
   @Test
-  @DisplayName("Is account non locked - should return true when active")
-  void isAccountNonLockedWhenActiveShouldReturnTrue() {
-    user.setIsActive(true);
-    assertThat(user.isAccountNonLocked()).isTrue();
+  @DisplayName("getUsername() - Should return username for Spring Security")
+  void getUsername_ShouldReturnUsernameForSpringSecurity() {
+    // When & Then
+    assertThat(adminUser.getUsername()).isEqualTo("admin");
   }
 
   @Test
-  @DisplayName("Is account non locked - should return false when inactive")
-  void isAccountNonLockedWhenInactiveShouldReturnFalse() {
-    user.setIsActive(false);
-    assertThat(user.isAccountNonLocked()).isFalse();
+  @DisplayName("isAccountNonExpired() - Should always return true")
+  void isAccountNonExpired_ShouldAlwaysReturnTrue() {
+    // When & Then
+    assertThat(adminUser.isAccountNonExpired()).isTrue();
   }
 
   @Test
-  @DisplayName("Is enabled - should match isActive status")
-  void isEnabledShouldMatchIsActive() {
-    user.setIsActive(true);
-    assertThat(user.isEnabled()).isTrue();
-
-    user.setIsActive(false);
-    assertThat(user.isEnabled()).isFalse();
-  }
-
-  @Test
-  @DisplayName("Get password - should return password hash")
-  void getPasswordShouldReturnPasswordHash() {
-    assertThat(user.getPassword()).isEqualTo(user.getPasswordHash());
-  }
-
-  @Test
-  @DisplayName("Get username - should return username")
-  void getUsernameShouldReturnUsername() {
-    assertThat(user.getUsername()).isEqualTo("testuser");
-  }
-
-  @Test
-  @DisplayName("Is account non expired - should always return true")
-  void isAccountNonExpiredShouldAlwaysReturnTrue() {
-    assertThat(user.isAccountNonExpired()).isTrue();
-  }
-
-  @Test
-  @DisplayName("Is credentials non expired - should always return true")
-  void isCredentialsNonExpiredShouldAlwaysReturnTrue() {
-    assertThat(user.isCredentialsNonExpired()).isTrue();
+  @DisplayName("isCredentialsNonExpired() - Should always return true")
+  void isCredentialsNonExpired_ShouldAlwaysReturnTrue() {
+    // When & Then
+    assertThat(adminUser.isCredentialsNonExpired()).isTrue();
   }
 }

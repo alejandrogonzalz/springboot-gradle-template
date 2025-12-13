@@ -64,6 +64,26 @@ public class AuthenticationController {
         .body(ApiResponse.success(response, "Token refreshed successfully"));
   }
 
+  @PostMapping("/logout")
+  @Operation(
+      summary = "Logout user",
+      description =
+          "Logs out the current user by deleting their refresh token from the database. "
+              + "The access token will remain valid until it expires (15 minutes).")
+  public ResponseEntity<ApiResponse<Void>> logout(
+      @CookieValue(name = "refreshToken", required = false) String refreshToken) {
+
+    authenticationService.logout(refreshToken);
+
+    // Clear the refresh token cookie
+    ResponseCookie cookie =
+        ResponseCookie.from("refreshToken", "").maxAge(0).path("/api/v1/auth").build();
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, cookie.toString())
+        .body(ApiResponse.success(null, "Logged out successfully"));
+  }
+
   /**
    * Creates a secure HTTP-only cookie for the refresh token.
    *

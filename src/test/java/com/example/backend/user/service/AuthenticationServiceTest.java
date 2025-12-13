@@ -8,10 +8,13 @@ import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
 import com.example.backend.user.dto.LoginRequest;
 import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.entity.RefreshToken;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
+import com.example.backend.user.repository.RefreshTokenRepository;
 import com.example.backend.user.repository.UserRepository;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuthenticationService Unit Tests")
@@ -33,7 +35,7 @@ class AuthenticationServiceTest {
 
   @Mock private UserMapper userMapper;
 
-  @Mock private PasswordEncoder passwordEncoder;
+  @Mock private RefreshTokenRepository refreshTokenRepository;
 
   @Mock private JwtService jwtService;
 
@@ -71,6 +73,7 @@ class AuthenticationServiceTest {
   @Test
   @DisplayName("Login - should authenticate and return tokens")
   void loginWithValidCredentialsShouldReturnAuthenticationResponse() {
+    // Given
     Authentication authentication = mock(Authentication.class);
     when(authentication.getPrincipal()).thenReturn(testUser);
     when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
@@ -78,28 +81,85 @@ class AuthenticationServiceTest {
     when(userRepository.save(any(User.class))).thenReturn(testUser);
     when(jwtService.generateToken(testUser)).thenReturn("access-token");
     when(jwtService.generateRefreshToken(testUser)).thenReturn("refresh-token");
+    when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(null);
 
+    // When
     AuthenticationResponse result = authenticationService.login(loginRequest);
 
+    // Then
     assertThat(result).isNotNull();
     assertThat(result.getAccessToken()).isEqualTo("access-token");
+    assertThat(result.getRefreshToken()).isEqualTo("refresh-token"); // ✅ NEW TEST
+    assertThat(result.getTokenType()).isEqualTo("Bearer");
+    assertThat(result.getUser()).isNotNull();
     verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     verify(userRepository).save(testUser);
+    verify(jwtService).generateToken(testUser);
+    verify(jwtService).generateRefreshToken(testUser);
+    verify(refreshTokenRepository).save(any(RefreshToken.class));
+  }
+
+  @Test
+  @DisplayName("Login - should store refresh token in database")
+  void loginShouldStoreRefreshTokenInDatabase() {
+    // Given
+    Authentication authentication = mock(Authentication.class);
+    when(authentication.getPrincipal()).thenReturn(testUser);
+    when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+        .thenReturn(authentication);
+    when(userRepository.save(any(User.class))).thenReturn(testUser);
+    when(jwtService.generateToken(testUser)).thenReturn("access-token");
+    when(jwtService.generateRefreshToken(testUser)).thenReturn("refresh-token-123");
+    when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(null);
+
+    // When
+    authenticationService.login(loginRequest);
+
+    // Then
+    verify(refreshTokenRepository).save(any(RefreshToken.class));
   }
 
   @Test
   @DisplayName("Refresh token - should return new access token")
   void refreshTokenWithValidTokenShouldReturnNewAccessToken() {
+    // Given
     String validRefreshToken = "valid-refresh-token";
+    RefreshToken storedToken =
+        RefreshToken.builder()
+            .token(validRefreshToken)
+            .user(testUser)
+            .expiresAt(Instant.now().plusSeconds(604800))
+            .build();
+
+    when(refreshTokenRepository.findByToken(validRefreshToken))
+        .thenReturn(Optional.of(storedToken));
     when(jwtService.extractUsername(validRefreshToken)).thenReturn("testuser");
     when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
     when(jwtService.isTokenValid(validRefreshToken, testUser)).thenReturn(true);
     when(jwtService.generateToken(testUser)).thenReturn("new-access-token");
 
+    // When
     AuthenticationResponse result = authenticationService.refreshToken(validRefreshToken);
 
+    // Then
     assertThat(result).isNotNull();
     assertThat(result.getAccessToken()).isEqualTo("new-access-token");
+    assertThat(result.getRefreshToken()).isEqualTo(validRefreshToken); // Same refresh token
     verify(jwtService).generateToken(testUser);
+    verify(refreshTokenRepository).findByToken(validRefreshToken);
+  }
+
+  @Test
+  @DisplayName("Logout - should delete refresh token from database")
+  void logoutShouldDeleteRefreshTokenFromDatabase() {
+    // Given
+    String refreshToken = "refresh-token-to-delete";
+    doNothing().when(refreshTokenRepository).deleteByToken(refreshToken);
+
+    // When
+    authenticationService.logout(refreshToken);
+
+    // Then
+    verify(refreshTokenRepository).deleteByToken(refreshToken);
   }
 }
