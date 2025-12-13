@@ -1,7 +1,10 @@
 package com.example.backend.user.service;
 
 import com.example.backend.common.utils.SpecificationUtils;
+import com.example.backend.common.utils.TestUtils;
+import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
+import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.mapper.UserMapper;
@@ -13,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +29,7 @@ public class UserService implements UserDetailsService {
 
   private final UserRepository userRepository;
   private final UserMapper userMapper;
+  private final PasswordEncoder passwordEncoder;
 
   @Override
   public User loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -33,6 +38,38 @@ public class UserService implements UserDetailsService {
         .findByUsername(username)
         .orElseThrow(
             () -> new UsernameNotFoundException("User not found with username: " + username));
+  }
+
+  /**
+   * Registers a new user.
+   *
+   * <p>Note: This method does NOT generate tokens. Registration is admin-only and users must login
+   * separately after being created.
+   *
+   * @param request the registration request
+   * @return the created user
+   */
+  @Transactional
+  public User registerUser(RegisterRequest request) {
+    log.info("Registering new user: {}", TestUtils.toJsonString(request));
+
+    if (userRepository.existsByUsername(request.getUsername())) {
+      throw new DuplicateResourceException("Username already exists: " + request.getUsername());
+    }
+
+    if (userRepository.existsByEmail(request.getEmail())) {
+      throw new DuplicateResourceException("Email already exists: " + request.getEmail());
+    }
+
+    User user = userMapper.toEntity(request);
+    user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+    user.setRole(request.getUserRole());
+    user.setIsActive(true);
+
+    User savedUser = userRepository.save(user);
+    log.info("User registered successfully with id: {}", savedUser.getId());
+
+    return savedUser;
   }
 
   /**

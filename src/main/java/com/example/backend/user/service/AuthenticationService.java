@@ -1,14 +1,10 @@
 package com.example.backend.user.service;
 
-import com.example.backend.common.utils.TestUtils;
-import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
 import com.example.backend.user.dto.AuthenticationResponse.UserInfo;
 import com.example.backend.user.dto.LoginRequest;
-import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.entity.User;
-import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +13,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,48 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthenticationService {
 
   private final UserRepository userRepository;
-  private final UserMapper userMapper;
-  private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final AuthenticationManager authenticationManager;
-
-  /**
-   * Registers a new user.
-   *
-   * @param request the registration request
-   * @return authentication response with JWT tokens and user info
-   */
-  @Transactional
-  public AuthenticationResponse register(RegisterRequest request) {
-    log.info("Registering new user: {}", TestUtils.toJsonString(request));
-
-    if (userRepository.existsByUsername(request.getUsername())) {
-      throw new DuplicateResourceException("Username already exists: " + request.getUsername());
-    }
-
-    if (userRepository.existsByEmail(request.getEmail())) {
-      throw new DuplicateResourceException("Email already exists: " + request.getEmail());
-    }
-
-    User user = userMapper.toEntity(request);
-    user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-    user.setRole(request.getUserRole());
-    user.setIsActive(true);
-
-    User savedUser = userRepository.save(user);
-    log.info("User registered successfully with id: {}", savedUser.getId());
-
-    String accessToken = jwtService.generateToken(savedUser);
-    String refreshToken = jwtService.generateRefreshToken(savedUser);
-
-    return AuthenticationResponse.builder()
-        .accessToken(accessToken)
-        .refreshToken(refreshToken)
-        .tokenType("Bearer")
-        .expiresIn(86400000L)
-        .user(buildUserInfo(savedUser))
-        .build();
-  }
 
   /**
    * Authenticates a user and generates JWT tokens.
@@ -119,6 +74,10 @@ public class AuthenticationService {
    */
   public AuthenticationResponse refreshToken(String refreshToken) {
     log.debug("Refreshing access token");
+
+    if (refreshToken == null || refreshToken.isEmpty()) {
+      throw new IllegalArgumentException("Refresh token is empty");
+    }
 
     String username = jwtService.extractUsername(refreshToken);
     User user =

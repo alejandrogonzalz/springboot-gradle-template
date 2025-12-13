@@ -2,7 +2,7 @@ package com.example.backend;
 
 import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.entity.UserRole;
-import com.example.backend.user.service.AuthenticationService;
+import com.example.backend.user.service.UserService;
 import jakarta.annotation.PostConstruct;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -32,7 +32,7 @@ public class BackendApplication {
 
   private final Environment env;
   private final DataSource dataSource;
-  private final AuthenticationService authenticationService;
+  private final UserService userService;
 
   public static void main(String[] args) {
     log.info("╔════════════════════════════════════════════════════════════════╗");
@@ -118,7 +118,7 @@ public class BackendApplication {
                 .userRole(i == 1 ? UserRole.ADMIN : UserRole.USER)
                 .build();
 
-        authenticationService.register(request);
+        userService.registerUser(request);
       }
       log.info("✅ 10 default users created successfully (user1-user10)");
     } catch (Exception e) {

@@ -2,6 +2,8 @@ package com.example.backend.user.dto;
 
 import com.example.backend.user.entity.Permission;
 import com.example.backend.user.entity.UserRole;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Set;
 import lombok.AllArgsConstructor;
@@ -21,6 +23,8 @@ public class AuthenticationResponse {
   private String accessToken;
 
   @Schema(description = "JWT refresh token", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
+  @Hidden
+  @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
   private String refreshToken;
 
   @Schema(description = "Token type", example = "Bearer")

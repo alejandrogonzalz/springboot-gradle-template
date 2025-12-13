@@ -1,11 +1,9 @@
 package com.example.backend.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
 import com.example.backend.user.dto.LoginRequest;
@@ -14,7 +12,6 @@ import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
-import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,44 +62,10 @@ class AuthenticationServiceTest {
         User.builder()
             .id(1L)
             .username("testuser")
-            .passwordHash("$2a$10$hashedpassword")
-            .firstName("Test")
-            .lastName("User")
             .email("test@example.com")
+            .passwordHash("hashedPassword")
             .role(UserRole.USER)
-            .isActive(true)
-            .createdAt(Instant.now())
-            .updatedAt(Instant.now())
             .build();
-  }
-
-  @Test
-  @DisplayName("Register - should create user and return tokens")
-  void registerWithValidDataShouldReturnAuthenticationResponse() {
-    when(userRepository.existsByUsername("newuser")).thenReturn(false);
-    when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
-    when(userMapper.toEntity(registerRequest)).thenReturn(testUser);
-    when(passwordEncoder.encode("SecurePass123!")).thenReturn("$2a$10$hashedpassword");
-    when(userRepository.save(any(User.class))).thenReturn(testUser);
-    when(jwtService.generateToken(testUser)).thenReturn("access-token");
-    when(jwtService.generateRefreshToken(testUser)).thenReturn("refresh-token");
-
-    AuthenticationResponse result = authenticationService.register(registerRequest);
-
-    assertThat(result).isNotNull();
-    assertThat(result.getAccessToken()).isEqualTo("access-token");
-    assertThat(result.getRefreshToken()).isEqualTo("refresh-token");
-    verify(userRepository).save(any(User.class));
-  }
-
-  @Test
-  @DisplayName("Register - should throw exception when username exists")
-  void registerWithExistingUsernameShouldThrowException() {
-    when(userRepository.existsByUsername("newuser")).thenReturn(true);
-    assertThatThrownBy(() -> authenticationService.register(registerRequest))
-        .isInstanceOf(DuplicateResourceException.class)
-        .hasMessageContaining("Username already exists");
-    verify(userRepository, never()).save(any());
   }
 
   @Test
