@@ -2,7 +2,7 @@ package com.example.backend;
 
 import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.entity.UserRole;
-import com.example.backend.user.service.AuthenticationService;
+import com.example.backend.user.service.UserService;
 import jakarta.annotation.PostConstruct;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -32,7 +32,7 @@ public class BackendApplication {
 
   private final Environment env;
   private final DataSource dataSource;
-  private final AuthenticationService authenticationService;
+  private final UserService userService;
 
   public static void main(String[] args) {
     log.info("╔════════════════════════════════════════════════════════════════╗");
@@ -107,18 +107,20 @@ public class BackendApplication {
 
   private void createDefaultUser() {
     try {
-      RegisterRequest request =
-          RegisterRequest.builder()
-              .username("admin")
-              .password("Admin123!")
-              .firstName("Admin")
-              .lastName("User")
-              .email("admin@example.com")
-              .userRole(UserRole.ADMIN)
-              .build();
+      for (int i = 1; i <= 10; i++) {
+        RegisterRequest request =
+            RegisterRequest.builder()
+                .username("user" + i)
+                .password("User123!")
+                .firstName("User")
+                .lastName(String.valueOf(i))
+                .email("user" + i + "@example.com")
+                .userRole(i == 1 ? UserRole.ADMIN : UserRole.USER)
+                .build();
 
-      authenticationService.register(request);
-      log.info("✅ Default admin user created successfully");
+        userService.registerUser(request);
+      }
+      log.info("✅ 10 default users created successfully (user1-user10)");
     } catch (Exception e) {
       log.warn("⚠️  Default user creation skipped: {}", e.getMessage());
     }
@@ -196,9 +198,9 @@ public class BackendApplication {
     log.info("💊 Health Check:");
     log.info("   • Actuator:   {}://localhost:{}/actuator/health", protocol, serverPort);
     log.info("");
-    log.info("🔐 Default Admin Credentials:");
-    log.info("   • Username: admin");
-    log.info("   • Password: Admin123!");
+    log.info("🔐 Default User Credentials:");
+    log.info("   • Admin: user1 / User123!");
+    log.info("   • Users: user2-user10 / User123!");
     log.info("");
     log.info("╔════════════════════════════════════════════════════════════════╗");
     log.info("║          Ready to accept requests!                             ║");

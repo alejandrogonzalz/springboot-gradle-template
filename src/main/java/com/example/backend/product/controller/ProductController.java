@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/products")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 @Slf4j
 @Validated
 @Tag(name = "Products", description = "Product management APIs")
@@ -59,6 +62,7 @@ public class ProductController {
             content = @Content(schema = @Schema(implementation = ApiResponse.class)))
       })
   @GetMapping
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<Page<ProductDto>>> getAllProducts(
       @Parameter(description = "Page number (0-based)", example = "0")
           @RequestParam(defaultValue = "0")
@@ -111,6 +115,7 @@ public class ProductController {
             description = "Product not found")
       })
   @GetMapping("/{id}")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<ProductDto>> getProductById(
       @Parameter(description = "Product ID", example = "1", required = true) @PathVariable
           Long id) {
@@ -128,6 +133,7 @@ public class ProductController {
    */
   @Operation(summary = "Get product by SKU", description = "Retrieves a single product by its SKU")
   @GetMapping("/sku/{sku}")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<ProductDto>> getProductBySku(
       @Parameter(description = "Product SKU", example = "LAP-001", required = true) @PathVariable
           String sku) {
@@ -159,6 +165,7 @@ public class ProductController {
             description = "Product with SKU already exists")
       })
   @PostMapping
+  @PreAuthorize("hasAuthority('PERMISSION_CREATE')")
   public ResponseEntity<ApiResponse<ProductDto>> createProduct(
       @Valid @RequestBody ProductDto productDto) {
 
@@ -191,6 +198,7 @@ public class ProductController {
             description = "Invalid input data")
       })
   @PutMapping("/{id}")
+  @PreAuthorize("hasAuthority('PERMISSION_UPDATE')")
   public ResponseEntity<ApiResponse<ProductDto>> updateProduct(
       @Parameter(description = "Product ID", example = "1", required = true) @PathVariable Long id,
       @Valid @RequestBody ProductDto productDto) {
@@ -217,6 +225,7 @@ public class ProductController {
             description = "Product not found")
       })
   @DeleteMapping("/{id}")
+  @PreAuthorize("hasAuthority('PERMISSION_DELETE')")
   public ResponseEntity<ApiResponse<Void>> deleteProduct(
       @Parameter(description = "Product ID", example = "1", required = true) @PathVariable
           Long id) {
@@ -236,6 +245,7 @@ public class ProductController {
    */
   @Operation(summary = "Search products", description = "Searches products by name or description")
   @GetMapping("/search")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<Page<ProductDto>>> searchProducts(
       @Parameter(description = "Search keyword", example = "laptop", required = true) @RequestParam
           String keyword,
@@ -260,6 +270,7 @@ public class ProductController {
       summary = "Get products by category",
       description = "Retrieves all products in a specific category")
   @GetMapping("/category/{category}")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<Page<ProductDto>>> getProductsByCategory(
       @Parameter(description = "Product category", example = "Electronics", required = true)
           @PathVariable

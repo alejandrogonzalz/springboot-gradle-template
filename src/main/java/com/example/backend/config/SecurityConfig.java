@@ -1,5 +1,6 @@
 package com.example.backend.config;
 
+import com.example.backend.security.JwtAuthenticationEntryPoint;
 import com.example.backend.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -14,7 +15,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -32,6 +32,8 @@ public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthFilter;
   private final UserDetailsService userDetailsService;
+  private final PasswordEncoder passwordEncoder;
+  private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -41,7 +43,8 @@ public class SecurityConfig {
                 auth
                     // Public endpoints
                     .requestMatchers(
-                        "/api/v1/auth/**",
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/refresh",
                         "/api-docs/**",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
@@ -56,6 +59,8 @@ public class SecurityConfig {
                     .authenticated())
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(
+            exceptions -> exceptions.authenticationEntryPoint(jwtAuthenticationEntryPoint))
         .authenticationProvider(authenticationProvider())
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -66,7 +71,7 @@ public class SecurityConfig {
   public AuthenticationProvider authenticationProvider() {
     DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
     authProvider.setUserDetailsService(userDetailsService);
-    authProvider.setPasswordEncoder(passwordEncoder());
+    authProvider.setPasswordEncoder(passwordEncoder);
     return authProvider;
   }
 
@@ -74,10 +79,5 @@ public class SecurityConfig {
   public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
       throws Exception {
     return config.getAuthenticationManager();
-  }
-
-  @Bean
-  public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
   }
 }

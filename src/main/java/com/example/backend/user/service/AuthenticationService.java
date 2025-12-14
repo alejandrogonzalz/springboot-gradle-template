@@ -1,14 +1,14 @@
 package com.example.backend.user.service;
 
-import com.example.backend.common.utils.TestUtils;
-import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
+import com.example.backend.user.dto.AuthenticationResponse.UserInfo;
 import com.example.backend.user.dto.LoginRequest;
-import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.entity.RefreshToken;
 import com.example.backend.user.entity.User;
-import com.example.backend.user.mapper.UserMapper;
+import com.example.backend.user.repository.RefreshTokenRepository;
 import com.example.backend.user.repository.UserRepository;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,7 +16,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,58 +26,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthenticationService {
 
   private final UserRepository userRepository;
-  private final UserMapper userMapper;
-  private final PasswordEncoder passwordEncoder;
+  private final RefreshTokenRepository refreshTokenRepository;
   private final JwtService jwtService;
   private final AuthenticationManager authenticationManager;
-
-  /**
-   * Registers a new user.
-   *
-   * @param request the registration request
-   * @return authentication response with JWT tokens
-   */
-  @Transactional
-  public AuthenticationResponse register(RegisterRequest request) {
-    log.info("Registering new user: {}", TestUtils.toJsonString(request));
-
-    // Check if username already exists
-    if (userRepository.existsByUsername(request.getUsername())) {
-      throw new DuplicateResourceException("Username already exists: " + request.getUsername());
-    }
-
-    // Check if email already exists
-    if (userRepository.existsByEmail(request.getEmail())) {
-      throw new DuplicateResourceException("Email already exists: " + request.getEmail());
-    }
-
-    // Create user entity
-    User user = userMapper.toEntity(request);
-    user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-    user.setRole(request.getUserRole());
-    user.setIsActive(true);
-
-    // Save user
-    User savedUser = userRepository.save(user);
-    log.info("User registered successfully with id: {}", savedUser.getId());
-
-    // Generate tokens
-    String accessToken = jwtService.generateToken(savedUser);
-    String refreshToken = jwtService.generateRefreshToken(savedUser);
-
-    return AuthenticationResponse.builder()
-        .accessToken(accessToken)
-        .refreshToken(refreshToken)
-        .tokenType("Bearer")
-        .expiresIn(86400000L) // 24 hours in milliseconds
-        .build();
-  }
 
   /**
    * Authenticates a user and generates JWT tokens.
    *
    * @param request the login request
-   * @return authentication response with JWT tokens
+   * @return authentication response with JWT tokens and user info
    */
   @Transactional
   public AuthenticationResponse login(LoginRequest request) {
@@ -92,13 +48,26 @@ public class AuthenticationService {
 
       User user = (User) authentication.getPrincipal();
 
-      // Update last login date
       user.updateLastLoginDate();
       userRepository.save(user);
 
-      // Generate tokens
+      // 🔒 SINGLE SESSION: Delete all existing refresh tokens for this user
+      // This ensures user can only be logged in on ONE device at a time
+      refreshTokenRepository.deleteByUser(user);
+
       String accessToken = jwtService.generateToken(user);
       String refreshToken = jwtService.generateRefreshToken(user);
+
+      // Store refresh token in database
+      RefreshToken refreshTokenEntity =
+          RefreshToken.builder()
+              .token(refreshToken)
+              .user(user)
+              .expiresAt(Instant.now().plusSeconds(604800)) // 7 days
+              .build();
+      refreshTokenRepository.save(refreshTokenEntity);
+
+      log.debug("Refresh token stored in database for user: {}", user.getUsername());
 
       log.info("User logged in successfully: {}", user.getUsername());
 
@@ -106,7 +75,8 @@ public class AuthenticationService {
           .accessToken(accessToken)
           .refreshToken(refreshToken)
           .tokenType("Bearer")
-          .expiresIn(86400000L)
+          .expiresIn(900000L) // 15 minutes
+          .user(buildUserInfo(user))
           .build();
 
     } catch (AuthenticationException e) {
@@ -124,6 +94,22 @@ public class AuthenticationService {
   public AuthenticationResponse refreshToken(String refreshToken) {
     log.debug("Refreshing access token");
 
+    if (refreshToken == null || refreshToken.isEmpty()) {
+      throw new IllegalArgumentException("Refresh token is empty");
+    }
+
+    // Check if token exists in database
+    RefreshToken storedToken =
+        refreshTokenRepository
+            .findByToken(refreshToken)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+
+    // Check if token is expired
+    if (storedToken.isExpired()) {
+      refreshTokenRepository.delete(storedToken);
+      throw new IllegalArgumentException("Refresh token has expired");
+    }
+
     String username = jwtService.extractUsername(refreshToken);
     User user =
         userRepository
@@ -136,11 +122,46 @@ public class AuthenticationService {
 
     String newAccessToken = jwtService.generateToken(user);
 
+    // Return same refresh token (no rotation)
     return AuthenticationResponse.builder()
         .accessToken(newAccessToken)
         .refreshToken(refreshToken)
         .tokenType("Bearer")
-        .expiresIn(86400000L)
+        .expiresIn(900000L) // 15 minutes
+        .user(buildUserInfo(user))
+        .build();
+  }
+
+  /**
+   * Logs out a user by deleting their refresh token from the database.
+   *
+   * @param refreshToken the refresh token to invalidate
+   */
+  @Transactional
+  public void logout(String refreshToken) {
+    if (refreshToken != null && !refreshToken.isEmpty()) {
+      refreshTokenRepository.deleteByToken(refreshToken);
+      log.info("User logged out successfully - refresh token deleted");
+    } else {
+      log.debug("No refresh token provided for logout");
+    }
+  }
+
+  /**
+   * Builds UserInfo from User entity.
+   *
+   * @param user the user entity
+   * @return UserInfo DTO
+   */
+  private UserInfo buildUserInfo(User user) {
+    return UserInfo.builder()
+        .username(user.getUsername())
+        .email(user.getEmail())
+        .firstName(user.getFirstName())
+        .lastName(user.getLastName())
+        .role(user.getRole())
+        .permissions(user.getAdditionalPermissions())
+        .isActive(user.getIsActive())
         .build();
   }
 }

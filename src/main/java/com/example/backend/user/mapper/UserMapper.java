@@ -32,6 +32,5 @@ public interface UserMapper {
   @Mapping(target = "lastLoginDate", ignore = true)
   @Mapping(target = "isActive", constant = "true")
   @Mapping(target = "role", ignore = true)
-  @Mapping(target = "permissions", ignore = true)
   User toEntity(RegisterRequest request);
 }

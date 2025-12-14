@@ -1,21 +1,29 @@
 package com.example.backend.user.controller;
 
 import com.example.backend.common.ApiResponse;
+import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.dto.UserDto;
+import com.example.backend.user.entity.User;
+import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-/** REST controller for user management operations. */
+/**
+ * REST controller for user management operations. Uses Spring Security's @PreAuthorize with
+ * authority-based access control.
+ */
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -24,12 +32,30 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
   private final UserService userService;
+  private final UserMapper userMapper;
+
+  @PostMapping
+  @Operation(
+      summary = "Create a new user (Admin only)",
+      description =
+          "Creates a new user account. Only administrators can register new users. User must login separately after creation.")
+  @PreAuthorize("hasAuthority('PERMISSION_MANAGE_USERS') or hasRole('ADMIN')")
+  public ResponseEntity<ApiResponse<UserDto>> createUser(
+      @Valid @RequestBody RegisterRequest request) {
+    User user = userService.registerUser(request);
+    UserDto userDto = userMapper.toDto(user);
+
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(
+            ApiResponse.success(
+                userDto, "User created successfully. User must login to get access token."));
+  }
 
   @GetMapping
   @Operation(
       summary = "Get all users",
       description = "Retrieves all users with optional filtering and pagination")
-  @PreAuthorize("hasAuthority('READ')")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<Page<UserDto>>> getAllUsers(
       @RequestParam(required = false) String username,
       @RequestParam(required = false) String email,
@@ -42,7 +68,7 @@ public class UserController {
 
   @GetMapping("/{id}")
   @Operation(summary = "Get user by ID", description = "Retrieves a specific user by their ID")
-  @PreAuthorize("hasAuthority('READ')")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable Long id) {
     UserDto user = userService.getUserById(id);
     return ResponseEntity.ok(ApiResponse.success(user, "User retrieved successfully"));
@@ -52,7 +78,7 @@ public class UserController {
   @Operation(
       summary = "Get user by username",
       description = "Retrieves a specific user by their username")
-  @PreAuthorize("hasAuthority('READ')")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<UserDto>> getUserByUsername(@PathVariable String username) {
     UserDto user = userService.getUserByUsername(username);
     return ResponseEntity.ok(ApiResponse.success(user, "User retrieved successfully"));
@@ -60,7 +86,7 @@ public class UserController {
 
   @PutMapping("/{id}")
   @Operation(summary = "Update user", description = "Updates an existing user")
-  @PreAuthorize("hasAuthority('UPDATE') or #id == authentication.principal.id")
+  @PreAuthorize("hasAuthority('PERMISSION_UPDATE') or #id == authentication.principal.id")
   public ResponseEntity<ApiResponse<UserDto>> updateUser(
       @PathVariable Long id, @RequestBody UserDto userDto) {
     UserDto updatedUser = userService.updateUser(id, userDto);
@@ -69,7 +95,7 @@ public class UserController {
 
   @DeleteMapping("/{id}")
   @Operation(summary = "Delete user", description = "Deletes a user by ID")
-  @PreAuthorize("hasAuthority('DELETE') or hasAuthority('ADMIN')")
+  @PreAuthorize("hasAuthority('PERMISSION_DELETE') or hasAuthority('PERMISSION_ADMIN')")
   public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
     userService.deleteUser(id);
     return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));
