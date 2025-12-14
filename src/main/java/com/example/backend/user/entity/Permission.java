@@ -7,8 +7,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 /**
  * Global permission enumeration using Spring Security authority naming convention.
  *
- * <p>Each permission is prefixed with "PERM_" to distinguish from roles in Spring Security. This
- * follows Spring Security best practices for fine-grained access control.
+ * <p>Each permission is prefixed with "PERMISSION_" to distinguish from roles in Spring Security.
+ * This follows Spring Security best practices for fine-grained access control.
  */
 @Getter
 public enum Permission {

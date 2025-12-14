@@ -76,8 +76,15 @@ public class AuthenticationController {
     authenticationService.logout(refreshToken);
 
     // Clear the refresh token cookie
+    // Clear the refresh token cookie with same attributes as when it was set
     ResponseCookie cookie =
-        ResponseCookie.from("refreshToken", "").maxAge(0).path("/api/v1/auth").build();
+        ResponseCookie.from("refreshToken", "")
+            .httpOnly(true)
+            .secure(true)
+            .sameSite("Lax")
+            .path("/")
+            .maxAge(0)
+            .build();
 
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, cookie.toString())
@@ -95,7 +102,7 @@ public class AuthenticationController {
         .httpOnly(true)
         .secure(true)
         .sameSite("Lax")
-        .path("/api/v1/auth")
+        .path("/")
         .maxAge(Duration.ofDays(1))
         .build();
   }
