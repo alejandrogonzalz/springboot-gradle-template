@@ -2,13 +2,13 @@ package com.example.backend.user.service;
 
 import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
-import com.example.backend.user.dto.AuthenticationResponse.UserInfo;
 import com.example.backend.user.dto.LoginRequest;
 import com.example.backend.user.entity.RefreshToken;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.RefreshTokenRepository;
 import com.example.backend.user.repository.UserRepository;
 import java.time.Instant;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,13 +31,17 @@ public class AuthenticationService {
   private final AuthenticationManager authenticationManager;
 
   /**
-   * Authenticates a user and generates JWT tokens.
+   * Authenticates a user and generates JWT tokens (returned separately as cookies).
    *
-   * @param request the login request
-   * @return authentication response with JWT tokens and user info
+   * <p>This method returns ONLY user data in AuthenticationResponse. Tokens (access and refresh)
+   * should be set as HTTP-only cookies by the controller.
+   *
+   * @param request login credentials
+   * @return AuthenticationResult containing User entity and response DTO
+   * @throws BadCredentialsException if credentials are invalid
    */
   @Transactional
-  public AuthenticationResponse login(LoginRequest request) {
+  public AuthenticationResult login(LoginRequest request) {
     log.info("User login attempt for username: {}", request.getUsername());
 
     try {
@@ -55,10 +59,9 @@ public class AuthenticationService {
       // This ensures user can only be logged in on ONE device at a time
       refreshTokenRepository.deleteByUser(user);
 
-      String accessToken = jwtService.generateToken(user);
+      // Generate tokens (controller will set them as HTTP-only cookies)
       String refreshToken = jwtService.generateRefreshToken(user);
 
-      // Store refresh token in database
       RefreshToken refreshTokenEntity =
           RefreshToken.builder()
               .token(refreshToken)
@@ -67,17 +70,8 @@ public class AuthenticationService {
               .build();
       refreshTokenRepository.save(refreshTokenEntity);
 
-      log.debug("Refresh token stored in database for user: {}", user.getUsername());
-
       log.info("User logged in successfully: {}", user.getUsername());
-
-      return AuthenticationResponse.builder()
-          .accessToken(accessToken)
-          .refreshToken(refreshToken)
-          .tokenType("Bearer")
-          .expiresIn(900000L) // 15 minutes
-          .user(buildUserInfo(user))
-          .build();
+      return new AuthenticationResult(user, buildAuthenticationResponse(user));
 
     } catch (AuthenticationException e) {
       log.warn("Authentication failed for username: {}", request.getUsername());
@@ -86,12 +80,41 @@ public class AuthenticationService {
   }
 
   /**
-   * Refreshes the access token using a valid refresh token.
+   * Result containing both User entity (for token generation) and AuthenticationResponse (for
+   * client response).
+   */
+  public record AuthenticationResult(User user, AuthenticationResponse response) {}
+
+  /**
+   * Gets the generated tokens for setting as HTTP-only cookies. Called by controller after
+   * successful login/refresh.
+   *
+   * @param user the authenticated user
+   * @return map with "accessToken" and "refreshToken" keys
+   */
+  public Map<String, String> generateTokens(User user) {
+    String accessToken = jwtService.generateToken(user);
+    String refreshToken = jwtService.generateRefreshToken(user);
+
+    log.debug("Generated tokens for user: {}", user.getUsername());
+    log.debug("   ├─ Access Token Length: {} chars", accessToken.length());
+    log.debug("   └─ Refresh Token Length: {} chars", refreshToken.length());
+
+    return Map.of("accessToken", accessToken, "refreshToken", refreshToken);
+  }
+
+  /**
+   * Refreshes the access token using a valid refresh token (returned separately as cookies).
+   *
+   * <p>This method returns ONLY user data in AuthenticationResponse. New tokens (access and
+   * potentially rotated refresh) should be set as HTTP-only cookies by the controller.
    *
    * @param refreshToken the refresh token
-   * @return authentication response with new access token
+   * @return AuthenticationResult containing User entity and response DTO
+   * @throws IllegalArgumentException if refresh token is invalid or expired
    */
-  public AuthenticationResponse refreshToken(String refreshToken) {
+  @Transactional
+  public AuthenticationResult refreshToken(String refreshToken) {
     log.debug("Refreshing access token");
 
     if (refreshToken == null || refreshToken.isEmpty()) {
@@ -110,26 +133,10 @@ public class AuthenticationService {
       throw new IllegalArgumentException("Refresh token has expired");
     }
 
-    String username = jwtService.extractUsername(refreshToken);
-    User user =
-        userRepository
-            .findByUsername(username)
-            .orElseThrow(() -> new IllegalStateException("User not found"));
+    User user = storedToken.getUser();
 
-    if (!jwtService.isTokenValid(refreshToken, user)) {
-      throw new IllegalArgumentException("Invalid refresh token");
-    }
-
-    String newAccessToken = jwtService.generateToken(user);
-
-    // Return same refresh token (no rotation)
-    return AuthenticationResponse.builder()
-        .accessToken(newAccessToken)
-        .refreshToken(refreshToken)
-        .tokenType("Bearer")
-        .expiresIn(900000L) // 15 minutes
-        .user(buildUserInfo(user))
-        .build();
+    log.debug("Token refreshed successfully for user: {}", user.getUsername());
+    return new AuthenticationResult(user, buildAuthenticationResponse(user));
   }
 
   /**
@@ -148,13 +155,25 @@ public class AuthenticationService {
   }
 
   /**
-   * Builds UserInfo from User entity.
+   * Gets user information for the currently authenticated user.
    *
-   * @param user the user entity
-   * @return UserInfo DTO
+   * @param user the authenticated user
+   * @return authentication response with user data
    */
-  private UserInfo buildUserInfo(User user) {
-    return UserInfo.builder()
+  public AuthenticationResponse getUserInfo(User user) {
+    log.debug("Getting user info for: {}", user.getUsername());
+    return buildAuthenticationResponse(user);
+  }
+
+  /**
+   * Builds authentication response with user information only (no tokens).
+   *
+   * @param user the authenticated user
+   * @return authentication response with ONLY user data (no tokens)
+   */
+  private AuthenticationResponse buildAuthenticationResponse(User user) {
+    return AuthenticationResponse.builder()
+        .userId(user.getId())
         .username(user.getUsername())
         .email(user.getEmail())
         .firstName(user.getFirstName())
