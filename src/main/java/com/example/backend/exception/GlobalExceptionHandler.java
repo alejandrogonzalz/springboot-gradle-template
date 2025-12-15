@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -137,6 +138,20 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Handles UnauthorizedException (custom 401 errors).
+   *
+   * @param ex the exception
+   * @return error response with 401 status
+   */
+  @ExceptionHandler(UnauthorizedException.class)
+  public ResponseEntity<ApiResponse<Void>> handleUnauthorizedException(UnauthorizedException ex) {
+    log.warn("Unauthorized access: {}", ex.getMessage());
+
+    ApiResponse<Void> response = ApiResponse.error(ex.getMessage());
+    return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+  }
+
+  /**
    * Handles unauthorized exception.
    *
    * @param ex the exception
@@ -148,6 +163,22 @@ public class GlobalExceptionHandler {
     ApiResponse<Map<String, String>> response =
         ApiResponse.<Map<String, String>>builder().success(false).message(ex.getMessage()).build();
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+  }
+
+  /**
+   * Handles missing required cookie exceptions.
+   *
+   * @param ex the exception
+   * @return error response with 401 status
+   */
+  @ExceptionHandler(MissingRequestCookieException.class)
+  public ResponseEntity<ApiResponse<Void>> handleMissingCookieException(
+      MissingRequestCookieException ex) {
+    log.warn("Missing required cookie: {}", ex.getCookieName());
+
+    ApiResponse<Void> response =
+        ApiResponse.error("Authentication required. Please log in to access this resource.");
+    return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
   }
 
   /**

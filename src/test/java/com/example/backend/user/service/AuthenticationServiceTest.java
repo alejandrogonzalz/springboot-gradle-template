@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.example.backend.security.JwtService;
-import com.example.backend.user.dto.AuthenticationResponse;
 import com.example.backend.user.dto.LoginRequest;
 import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.entity.RefreshToken;
@@ -79,22 +78,21 @@ class AuthenticationServiceTest {
     when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
         .thenReturn(authentication);
     when(userRepository.save(any(User.class))).thenReturn(testUser);
-    when(jwtService.generateToken(testUser)).thenReturn("access-token");
     when(jwtService.generateRefreshToken(testUser)).thenReturn("refresh-token");
     when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(null);
 
     // When
-    AuthenticationResponse result = authenticationService.login(loginRequest);
+    AuthenticationService.AuthenticationResult result = authenticationService.login(loginRequest);
 
     // Then
     assertThat(result).isNotNull();
-    assertThat(result.getAccessToken()).isEqualTo("access-token");
-    assertThat(result.getRefreshToken()).isEqualTo("refresh-token"); // ✅ NEW TEST
-    assertThat(result.getTokenType()).isEqualTo("Bearer");
-    assertThat(result.getUser()).isNotNull();
+    assertThat(result.user()).isNotNull();
+    assertThat(result.user().getUsername()).isEqualTo("testuser");
+    assertThat(result.response()).isNotNull();
+    assertThat(result.response().getUsername()).isEqualTo("testuser");
+    assertThat(result.response().getEmail()).isEqualTo("test@example.com");
     verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     verify(userRepository).save(testUser);
-    verify(jwtService).generateToken(testUser);
     verify(jwtService).generateRefreshToken(testUser);
     verify(refreshTokenRepository).save(any(RefreshToken.class));
   }
@@ -108,7 +106,6 @@ class AuthenticationServiceTest {
     when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
         .thenReturn(authentication);
     when(userRepository.save(any(User.class))).thenReturn(testUser);
-    when(jwtService.generateToken(testUser)).thenReturn("access-token");
     when(jwtService.generateRefreshToken(testUser)).thenReturn("refresh-token-123");
     when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(null);
 
@@ -133,19 +130,16 @@ class AuthenticationServiceTest {
 
     when(refreshTokenRepository.findByToken(validRefreshToken))
         .thenReturn(Optional.of(storedToken));
-    when(jwtService.extractUsername(validRefreshToken)).thenReturn("testuser");
-    when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
-    when(jwtService.isTokenValid(validRefreshToken, testUser)).thenReturn(true);
-    when(jwtService.generateToken(testUser)).thenReturn("new-access-token");
 
     // When
-    AuthenticationResponse result = authenticationService.refreshToken(validRefreshToken);
+    AuthenticationService.AuthenticationResult result =
+        authenticationService.refreshToken(validRefreshToken);
 
     // Then
     assertThat(result).isNotNull();
-    assertThat(result.getAccessToken()).isEqualTo("new-access-token");
-    assertThat(result.getRefreshToken()).isEqualTo(validRefreshToken); // Same refresh token
-    verify(jwtService).generateToken(testUser);
+    assertThat(result.user()).isNotNull();
+    assertThat(result.user().getUsername()).isEqualTo("testuser");
+    assertThat(result.response().getUsername()).isEqualTo("testuser");
     verify(refreshTokenRepository).findByToken(validRefreshToken);
   }
 
