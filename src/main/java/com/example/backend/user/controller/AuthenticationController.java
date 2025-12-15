@@ -7,12 +7,11 @@ import com.example.backend.user.dto.AuthenticationResponse;
 import com.example.backend.user.dto.LoginRequest;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.service.AuthenticationService;
-import io.jsonwebtoken.Claims;
+import com.example.backend.user.service.AuthenticationService.AuthenticationResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Duration;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -36,6 +35,7 @@ public class AuthenticationController {
 
   private final AuthenticationService authenticationService;
   private final JwtService jwtService;
+  private final String TOKEN_PATH = "/";
 
   @PostMapping("/login")
   @Operation(
@@ -46,15 +46,12 @@ public class AuthenticationController {
   public ResponseEntity<ApiResponse<AuthenticationResponse>> login(
       @Valid @RequestBody LoginRequest request) {
 
-    // Authenticate and get user + response
-    var result = authenticationService.login(request);
-
-    // Generate tokens
-    Map<String, String> tokens = authenticationService.generateTokens(result.user());
+    // Authenticate and get user + response + tokens (all generated in service)
+    AuthenticationResult result = authenticationService.login(request);
 
     // Set both tokens as HTTP-only cookies
-    ResponseCookie accessCookie = createAccessTokenCookie(tokens.get("accessToken"));
-    ResponseCookie refreshCookie = createRefreshTokenCookie(tokens.get("refreshToken"));
+    ResponseCookie accessCookie = createAccessTokenCookie(result.accessToken());
+    ResponseCookie refreshCookie = createRefreshTokenCookie(result.refreshToken());
 
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
@@ -73,15 +70,12 @@ public class AuthenticationController {
 
     log.debug("Refreshing token from HTTP-only cookie");
 
-    // Refresh and get user + response
-    var result = authenticationService.refreshToken(refreshToken);
-
-    // Generate new tokens
-    Map<String, String> tokens = authenticationService.generateTokens(result.user());
+    // Refresh and get new access token (all generated in service)
+    AuthenticationResult result = authenticationService.refreshToken(refreshToken);
 
     // Set new tokens as HTTP-only cookies
-    ResponseCookie accessCookie = createAccessTokenCookie(tokens.get("accessToken"));
-    ResponseCookie refreshCookie = createRefreshTokenCookie(tokens.get("refreshToken"));
+    ResponseCookie accessCookie = createAccessTokenCookie(result.accessToken());
+    ResponseCookie refreshCookie = createRefreshTokenCookie(result.refreshToken());
 
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
@@ -106,7 +100,7 @@ public class AuthenticationController {
             .httpOnly(true)
             .secure(true)
             .sameSite("Lax")
-            .path("/")
+            .path(TOKEN_PATH)
             .maxAge(0)
             .build();
 
@@ -115,7 +109,7 @@ public class AuthenticationController {
             .httpOnly(true)
             .secure(true)
             .sameSite("Lax")
-            .path("/api/v1/auth/")
+            .path(TOKEN_PATH)
             .maxAge(0)
             .build();
 
@@ -134,7 +128,7 @@ public class AuthenticationController {
       @AuthenticationPrincipal User user) {
 
     if (user == null) {
-      throw new UnauthorizedException("Not authenticated. Please log in to access this resource.");
+      throw new UnauthorizedException("User cannot be null.");
     }
 
     AuthenticationResponse response = authenticationService.getUserInfo(user);
@@ -154,15 +148,15 @@ public class AuthenticationController {
         .httpOnly(true)
         .secure(true)
         .sameSite("Lax")
-        .path("/")
-        .maxAge(Duration.ofMinutes(15))
+        .path(TOKEN_PATH)
+        .maxAge(Duration.ofMillis(jwtService.getJwtExpiration()))
         .build();
   }
 
   /**
    * Creates a secure HTTP-only cookie for the refresh token.
    *
-   * <p>Refresh token is ONLY sent to /api/v1/auth/refresh endpoint for security
+   * <p>Refresh token is ONLY sent to /api/v1/auth/ endpoints for security
    *
    * @param refreshToken the refresh token value
    * @return ResponseCookie configured with security best practices
@@ -172,32 +166,8 @@ public class AuthenticationController {
         .httpOnly(true)
         .secure(true)
         .sameSite("Lax")
-        .path("/api/v1/auth/")
-        .maxAge(Duration.ofDays(1))
+        .path(TOKEN_PATH)
+        .maxAge(Duration.ofMillis(jwtService.getRefreshExpiration()))
         .build();
-  }
-
-  @GetMapping("/debug/token")
-  @Operation(
-      summary = "Debug token claims (Development only)",
-      description = "Decodes and returns all claims from the provided token. Remove in production!")
-  public ResponseEntity<ApiResponse<Claims>> debugToken(
-      @RequestHeader("Authorization") String authHeader) {
-
-    String token = authHeader.substring(7);
-
-    log.info("Debugging token claims");
-    Claims claims = jwtService.extractAllClaimsPublic(token);
-
-    log.info("  Token claims:");
-    log.info("   ├─ Subject (username): {}", claims.getSubject());
-    log.info("   ├─ Issued At: {}", claims.getIssuedAt());
-    log.info("   ├─ Expiration: {}", claims.getExpiration());
-    log.info("   ├─ Role: {}", claims.get("role"));
-    log.info("   ├─ User ID: {}", claims.get("userId"));
-    log.info("   ├─ Email: {}", claims.get("email"));
-    log.info("   └─ Permissions: {}", claims.get("permissions"));
-
-    return ResponseEntity.ok(ApiResponse.success(claims, "Token decoded successfully"));
   }
 }

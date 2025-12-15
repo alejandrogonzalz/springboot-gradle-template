@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
@@ -25,9 +26,11 @@ public class JwtService {
   private String secret;
 
   @Value("${jwt.expiration:86400000}")
+  @Getter
   private long jwtExpiration;
 
   @Value("${jwt.refresh-expiration:604800000}")
+  @Getter
   private long refreshExpiration;
 
   public String extractUsername(String token) {

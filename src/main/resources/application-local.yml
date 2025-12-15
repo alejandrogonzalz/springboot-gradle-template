@@ -32,5 +32,5 @@ logging:
     root: INFO
     com.example.backend: DEBUG
     org.springframework.web: DEBUG
-    org.hibernate.SQL: DEBUG           # Show SQL queries
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # Show SQL parameters
+#    org.hibernate.SQL: DEBUG           # Show SQL queries
+#    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # Show SQL parameters

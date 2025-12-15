@@ -1,5 +1,6 @@
 package com.example.backend.user.service;
 
+import com.example.backend.exception.UnauthorizedException;
 import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
 import com.example.backend.user.dto.LoginRequest;
@@ -8,7 +9,6 @@ import com.example.backend.user.entity.User;
 import com.example.backend.user.repository.RefreshTokenRepository;
 import com.example.backend.user.repository.UserRepository;
 import java.time.Instant;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -37,7 +37,7 @@ public class AuthenticationService {
    * should be set as HTTP-only cookies by the controller.
    *
    * @param request login credentials
-   * @return AuthenticationResult containing User entity and response DTO
+   * @return AuthenticationResult containing User entity, response DTO, and generated tokens
    * @throws BadCredentialsException if credentials are invalid
    */
   @Transactional
@@ -59,19 +59,24 @@ public class AuthenticationService {
       // This ensures user can only be logged in on ONE device at a time
       refreshTokenRepository.deleteByUser(user);
 
-      // Generate tokens (controller will set them as HTTP-only cookies)
+      // Generate both tokens
+      String accessToken = jwtService.generateToken(user);
       String refreshToken = jwtService.generateRefreshToken(user);
 
+      // Save refresh token to database
       RefreshToken refreshTokenEntity =
           RefreshToken.builder()
               .token(refreshToken)
               .user(user)
-              .expiresAt(Instant.now().plusSeconds(604800)) // 7 days
+              .expiresAt(Instant.now().plusSeconds(jwtService.getRefreshExpiration() / 1000))
               .build();
       refreshTokenRepository.save(refreshTokenEntity);
 
       log.info("User logged in successfully: {}", user.getUsername());
-      return new AuthenticationResult(user, buildAuthenticationResponse(user));
+
+      // Return user, response, and tokens
+      return new AuthenticationResult(
+          user, buildAuthenticationResponse(user), accessToken, refreshToken);
 
     } catch (AuthenticationException e) {
       log.warn("Authentication failed for username: {}", request.getUsername());
@@ -80,63 +85,53 @@ public class AuthenticationService {
   }
 
   /**
-   * Result containing both User entity (for token generation) and AuthenticationResponse (for
-   * client response).
+   * Result containing User entity, AuthenticationResponse, and generated tokens for setting as
+   * cookies.
    */
-  public record AuthenticationResult(User user, AuthenticationResponse response) {}
-
-  /**
-   * Gets the generated tokens for setting as HTTP-only cookies. Called by controller after
-   * successful login/refresh.
-   *
-   * @param user the authenticated user
-   * @return map with "accessToken" and "refreshToken" keys
-   */
-  public Map<String, String> generateTokens(User user) {
-    String accessToken = jwtService.generateToken(user);
-    String refreshToken = jwtService.generateRefreshToken(user);
-
-    log.debug("Generated tokens for user: {}", user.getUsername());
-    log.debug("   ├─ Access Token Length: {} chars", accessToken.length());
-    log.debug("   └─ Refresh Token Length: {} chars", refreshToken.length());
-
-    return Map.of("accessToken", accessToken, "refreshToken", refreshToken);
-  }
+  public record AuthenticationResult(
+      User user, AuthenticationResponse response, String accessToken, String refreshToken) {}
 
   /**
    * Refreshes the access token using a valid refresh token (returned separately as cookies).
    *
-   * <p>This method returns ONLY user data in AuthenticationResponse. New tokens (access and
-   * potentially rotated refresh) should be set as HTTP-only cookies by the controller.
+   * <p>This method generates a NEW access token and reuses the same refresh token (no rotation).
    *
    * @param refreshToken the refresh token
-   * @return AuthenticationResult containing User entity and response DTO
-   * @throws IllegalArgumentException if refresh token is invalid or expired
+   * @return AuthenticationResult containing User entity, response DTO, and NEW tokens
+   * @throws UnauthorizedException if refresh token is invalid or expired
    */
   @Transactional
   public AuthenticationResult refreshToken(String refreshToken) {
     log.debug("Refreshing access token");
 
     if (refreshToken == null || refreshToken.isEmpty()) {
-      throw new IllegalArgumentException("Refresh token is empty");
+      throw new UnauthorizedException("Refresh token is empty");
     }
 
     // Check if token exists in database
     RefreshToken storedToken =
         refreshTokenRepository
             .findByToken(refreshToken)
-            .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+            .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
     // Check if token is expired
     if (storedToken.isExpired()) {
       refreshTokenRepository.delete(storedToken);
-      throw new IllegalArgumentException("Refresh token has expired");
+      throw new UnauthorizedException("Refresh token has expired");
     }
 
     User user = storedToken.getUser();
 
+    // Generate new access token (refresh token stays the same)
+    String newAccessToken = jwtService.generateToken(user);
+
     log.debug("Token refreshed successfully for user: {}", user.getUsername());
-    return new AuthenticationResult(user, buildAuthenticationResponse(user));
+    log.debug("   ├─ New access token generated");
+    log.debug("   └─ Refresh token reused (not rotated)");
+
+    // Return user, response, and tokens
+    return new AuthenticationResult(
+        user, buildAuthenticationResponse(user), newAccessToken, refreshToken);
   }
 
   /**
