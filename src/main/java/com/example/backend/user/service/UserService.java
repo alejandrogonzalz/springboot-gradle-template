@@ -6,6 +6,7 @@ import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.dto.UserDto;
+import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
@@ -105,32 +106,50 @@ public class UserService implements UserDetailsService {
   /**
    * Gets all users with optional filtering and pagination using SpecificationUtils.
    *
-   * @param username optional username filter (contains)
-   * @param email optional email filter (contains)
-   * @param isActive optional active status filter
+   * @param filter user filter criteria with builder pattern
    * @param pageable pagination information
    * @return Page of UserDto
    */
-  public Page<UserDto> getAllUsers(
-      String username, String email, Boolean isActive, Pageable pageable) {
-    log.debug(
-        "Fetching all users with filters - username: {}, email: {}, isActive: {}",
-        username,
-        email,
-        isActive);
+  public Page<UserDto> getAllUsers(UserFilter filter, Pageable pageable) {
+    log.debug("Fetching all users with filter: {}", filter);
 
     Specification<User> spec = Specification.where(null);
 
-    if (username != null && !username.isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("username", username));
+    if (filter.getUsername() != null && !filter.getUsername().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("username", filter.getUsername()));
     }
 
-    if (email != null && !email.isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("email", email));
+    if (filter.getEmail() != null && !filter.getEmail().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("email", filter.getEmail()));
     }
 
-    if (isActive != null) {
-      spec = spec.and(SpecificationUtils.equals("isActive", isActive));
+    if (filter.getRoles() != null && !filter.getRoles().isEmpty()) {
+      spec = spec.and(SpecificationUtils.in("role", filter.getRoles()));
+    }
+
+    if (filter.getIsActive() != null && !filter.getIsActive().isEmpty()) {
+      spec = spec.and(SpecificationUtils.in("isActive", filter.getIsActive()));
+    }
+
+    if (filter.getCreatedAtFrom() != null || filter.getCreatedAtTo() != null) {
+      spec =
+          spec.and(
+              SpecificationUtils.between(
+                  "createdAt", filter.getCreatedAtFrom(), filter.getCreatedAtTo()));
+    }
+
+    if (filter.getUpdatedAtFrom() != null || filter.getUpdatedAtTo() != null) {
+      spec =
+          spec.and(
+              SpecificationUtils.between(
+                  "updatedAt", filter.getUpdatedAtFrom(), filter.getUpdatedAtTo()));
+    }
+
+    if (filter.getLastLoginDateFrom() != null || filter.getLastLoginDateTo() != null) {
+      spec =
+          spec.and(
+              SpecificationUtils.between(
+                  "lastLoginDate", filter.getLastLoginDateFrom(), filter.getLastLoginDateTo()));
     }
 
     return userRepository.findAll(spec, pageable).map(userMapper::toDto);

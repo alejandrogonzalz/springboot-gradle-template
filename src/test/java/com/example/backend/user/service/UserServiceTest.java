@@ -11,6 +11,7 @@ import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.dto.UserDto;
+import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
@@ -207,7 +208,11 @@ class UserServiceTest {
     Page<User> userPage = new PageImpl<>(List.of(testUser));
     when(userRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(userPage);
     when(userMapper.toDto(testUser)).thenReturn(testUserDto);
-    Page<UserDto> result = userService.getAllUsers(null, null, null, pageable);
+
+    // Updated to match new signature with date range filters
+    UserFilter filter = UserFilter.builder().build(); // Empty filter
+    Page<UserDto> result = userService.getAllUsers(filter, pageable);
+
     assertThat(result).isNotNull();
     assertThat(result.getContent()).hasSize(1);
     verify(userRepository).findAll(any(Specification.class), eq(pageable));

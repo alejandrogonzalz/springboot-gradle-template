@@ -1,16 +1,23 @@
 package com.example.backend.user.controller;
 
 import com.example.backend.common.ApiResponse;
+import com.example.backend.common.utils.DateUtils;
 import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.dto.UserDto;
+import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.entity.User;
+import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.Instant;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -27,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
+@Slf4j
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Users", description = "User management operations")
 public class UserController {
@@ -54,15 +62,65 @@ public class UserController {
   @GetMapping
   @Operation(
       summary = "Get all users",
-      description = "Retrieves all users with optional filtering and pagination")
+      description =
+          "Retrieves all users with optional filtering and pagination. "
+              + "Supports filtering by: username (contains), email (contains), roles (in list), active status (in list), "
+              + "and date ranges (createdAt, updatedAt, lastLoginDate) in dd-MM-yyyy format. "
+              + "Example: /api/v1/users?roles=ADMIN,USER&isActive=true&createdAtFrom=01-01-2024&createdAtTo=31-12-2024")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<Page<UserDto>>> getAllUsers(
-      @RequestParam(required = false) String username,
-      @RequestParam(required = false) String email,
-      @RequestParam(required = false) Boolean isActive,
+      @Parameter(description = "Filter by username (contains)") @RequestParam(required = false)
+          String username,
+      @Parameter(description = "Filter by email (contains)") @RequestParam(required = false)
+          String email,
+      @Parameter(description = "Filter by roles (e.g., ADMIN,USER)") @RequestParam(required = false)
+          List<UserRole> roles,
+      @Parameter(description = "Filter by active status (e.g., true,false)")
+          @RequestParam(required = false)
+          List<Boolean> isActive,
+      @Parameter(description = "Created date from (dd-MM-yyyy, e.g., 01-01-2024)")
+          @RequestParam(required = false)
+          String createdAtFrom,
+      @Parameter(description = "Created date to (dd-MM-yyyy, e.g., 31-12-2024)")
+          @RequestParam(required = false)
+          String createdAtTo,
+      @Parameter(description = "Updated date from (dd-MM-yyyy)") @RequestParam(required = false)
+          String updatedAtFrom,
+      @Parameter(description = "Updated date to (dd-MM-yyyy)") @RequestParam(required = false)
+          String updatedAtTo,
+      @Parameter(description = "Last login date from (dd-MM-yyyy)") @RequestParam(required = false)
+          String lastLoginDateFrom,
+      @Parameter(description = "Last login date to (dd-MM-yyyy)") @RequestParam(required = false)
+          String lastLoginDateTo,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
-    Page<UserDto> users = userService.getAllUsers(username, email, isActive, pageable);
+
+    // Parse date strings to Instant
+    Instant createdAtFromInstant = DateUtils.parseToStartOfDay(createdAtFrom);
+    Instant createdAtToInstant = DateUtils.parseToEndOfDay(createdAtTo);
+    Instant updatedAtFromInstant = DateUtils.parseToStartOfDay(updatedAtFrom);
+    Instant updatedAtToInstant = DateUtils.parseToEndOfDay(updatedAtTo);
+    Instant lastLoginDateFromInstant = DateUtils.parseToStartOfDay(lastLoginDateFrom);
+    Instant lastLoginDateToInstant = DateUtils.parseToEndOfDay(lastLoginDateTo);
+
+    // Build filter object
+    UserFilter filter =
+        UserFilter.builder()
+            .username(username)
+            .email(email)
+            .roles(roles)
+            .isActive(isActive)
+            .createdAtFrom(createdAtFromInstant)
+            .createdAtTo(createdAtToInstant)
+            .updatedAtFrom(updatedAtFromInstant)
+            .updatedAtTo(updatedAtToInstant)
+            .lastLoginDateFrom(lastLoginDateFromInstant)
+            .lastLoginDateTo(lastLoginDateToInstant)
+            .build();
+
+    log.debug("GET /api/v1/users - Filter: {}", filter);
+
+    Page<UserDto> users = userService.getAllUsers(filter, pageable);
     return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully"));
   }
 
