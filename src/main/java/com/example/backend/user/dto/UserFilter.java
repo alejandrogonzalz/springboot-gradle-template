@@ -1,0 +1,49 @@
+package com.example.backend.user.dto;
+
+import com.example.backend.user.entity.UserRole;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.Instant;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/** DTO for filtering users with builder pattern support. */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "User filter criteria")
+public class UserFilter {
+
+  @Schema(description = "Filter by username (contains)", example = "john")
+  private String username;
+
+  @Schema(description = "Filter by email (contains)", example = "john@example.com")
+  private String email;
+
+  @Schema(description = "Filter by roles", example = "[\"ADMIN\", \"USER\"]")
+  private List<UserRole> roles;
+
+  @Schema(description = "Filter by active status", example = "[true, false]")
+  private List<Boolean> isActive;
+
+  @Schema(description = "Created date from", example = "2024-01-01T00:00:00Z")
+  private Instant createdAtFrom;
+
+  @Schema(description = "Created date to", example = "2024-12-31T23:59:59Z")
+  private Instant createdAtTo;
+
+  @Schema(description = "Updated date from", example = "2024-01-01T00:00:00Z")
+  private Instant updatedAtFrom;
+
+  @Schema(description = "Updated date to", example = "2024-12-31T23:59:59Z")
+  private Instant updatedAtTo;
+
+  @Schema(description = "Last login date from", example = "2024-01-01T00:00:00Z")
+  private Instant lastLoginDateFrom;
+
+  @Schema(description = "Last login date to", example = "2024-12-31T23:59:59Z")
+  private Instant lastLoginDateTo;
+}
