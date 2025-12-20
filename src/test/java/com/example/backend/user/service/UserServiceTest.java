@@ -9,7 +9,7 @@ import static org.mockito.Mockito.*;
 
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
-import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.entity.User;
@@ -49,7 +49,7 @@ class UserServiceTest {
 
   private User testUser;
   private UserDto testUserDto;
-  private RegisterRequest registerRequest;
+  private CreateUserRequest createUserRequest;
 
   @BeforeEach
   void setUp() {
@@ -81,8 +81,8 @@ class UserServiceTest {
             .updatedAt(Instant.now())
             .build();
 
-    registerRequest =
-        RegisterRequest.builder()
+    createUserRequest =
+        CreateUserRequest.builder()
             .username("newuser")
             .password("Password123!")
             .email("newuser@example.com")
@@ -109,12 +109,12 @@ class UserServiceTest {
 
     when(userRepository.existsByUsername("newuser")).thenReturn(false);
     when(userRepository.existsByEmail("newuser@example.com")).thenReturn(false);
-    when(userMapper.toEntity(registerRequest)).thenReturn(newUser);
+    when(userMapper.toEntity(createUserRequest)).thenReturn(newUser);
     when(passwordEncoder.encode("Password123!")).thenReturn("hashedPassword");
     when(userRepository.save(any(User.class))).thenReturn(newUser);
 
     // When
-    User result = userService.registerUser(registerRequest);
+    User result = userService.registerUser(createUserRequest);
 
     // Then
     assertNotNull(result);
@@ -135,7 +135,7 @@ class UserServiceTest {
     when(userRepository.existsByUsername("newuser")).thenReturn(true);
 
     // When & Then
-    assertThatThrownBy(() -> userService.registerUser(registerRequest))
+    assertThatThrownBy(() -> userService.registerUser(createUserRequest))
         .isInstanceOf(DuplicateResourceException.class)
         .hasMessageContaining("Username already exists: newuser");
 
@@ -151,7 +151,7 @@ class UserServiceTest {
     when(userRepository.existsByEmail("newuser@example.com")).thenReturn(true);
 
     // When & Then
-    assertThatThrownBy(() -> userService.registerUser(registerRequest))
+    assertThatThrownBy(() -> userService.registerUser(createUserRequest))
         .isInstanceOf(DuplicateResourceException.class)
         .hasMessageContaining("Email already exists: newuser@example.com");
 
@@ -231,12 +231,62 @@ class UserServiceTest {
   }
 
   @Test
-  @DisplayName("Delete user - should delete when user exists")
-  void deleteUserWhenUserExistsShouldDeleteUser() {
-    when(userRepository.existsById(1L)).thenReturn(true);
-    doNothing().when(userRepository).deleteById(1L);
+  @DisplayName("Delete user - should soft delete when user exists")
+  void deleteUserWhenUserExistsShouldSoftDeleteUser() {
+    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+    when(userRepository.save(any(User.class))).thenReturn(testUser);
+
     userService.deleteUser(1L);
-    verify(userRepository).existsById(1L);
-    verify(userRepository).deleteById(1L);
+
+    verify(userRepository).findById(1L);
+    verify(userRepository).save(testUser);
+    // Verify soft delete was called on the user
+    assertThat(testUser.getDeletedAt()).isNotNull();
+    assertThat(testUser.getDeletedBy()).isNotNull();
+    assertThat(testUser.getIsActive()).isFalse();
+  }
+
+  @Test
+  @DisplayName("Delete user - should throw exception when already deleted")
+  void deleteUserWhenAlreadyDeletedShouldThrowException() {
+    testUser.softDelete("admin");
+    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+    assertThatThrownBy(() -> userService.deleteUser(1L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("User is already deleted");
+
+    verify(userRepository).findById(1L);
+    verify(userRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("Restore user - should restore when user is deleted")
+  void restoreUserWhenUserIsDeletedShouldRestoreUser() {
+    testUser.softDelete("admin");
+    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+    when(userRepository.save(any(User.class))).thenReturn(testUser);
+
+    userService.restoreUser(1L);
+
+    verify(userRepository).findById(1L);
+    verify(userRepository).save(testUser);
+    // Verify restore was called
+    assertThat(testUser.getDeletedAt()).isNull();
+    assertThat(testUser.getDeletedBy()).isNull();
+  }
+
+  @Test
+  @DisplayName("Restore user - should throw exception when user is not deleted")
+  void restoreUserWhenUserIsNotDeletedShouldThrowException() {
+    // User is not deleted (deletedAt is null)
+    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+    assertThatThrownBy(() -> userService.restoreUser(1L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("User is not deleted");
+
+    verify(userRepository).findById(1L);
+    verify(userRepository, never()).save(any());
   }
 }

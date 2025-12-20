@@ -1,6 +1,6 @@
 package com.example.backend;
 
-import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.service.UserService;
 import jakarta.annotation.PostConstruct;
@@ -26,7 +26,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 @Slf4j
 @SpringBootApplication
 @EnableCaching
-@EnableJpaAuditing
+@EnableJpaAuditing(auditorAwareRef = "auditorAwareImpl")
 @RequiredArgsConstructor
 public class BackendApplication {
 
@@ -108,8 +108,8 @@ public class BackendApplication {
   private void createDefaultUser() {
     try {
       for (int i = 1; i <= 10; i++) {
-        RegisterRequest request =
-            RegisterRequest.builder()
+        CreateUserRequest request =
+            CreateUserRequest.builder()
                 .username("user" + i)
                 .password("User123!")
                 .firstName("User")

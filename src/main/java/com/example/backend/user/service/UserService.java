@@ -4,7 +4,7 @@ import com.example.backend.common.utils.SpecificationUtils;
 import com.example.backend.common.utils.TestUtils;
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
-import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.entity.User;
@@ -15,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -51,7 +53,7 @@ public class UserService implements UserDetailsService {
    * @return the created user
    */
   @Transactional
-  public User registerUser(RegisterRequest request) {
+  public User registerUser(CreateUserRequest request) {
     log.info("Registering new user: {}", TestUtils.toJsonString(request));
 
     if (userRepository.existsByUsername(request.getUsername())) {
@@ -113,7 +115,9 @@ public class UserService implements UserDetailsService {
   public Page<UserDto> getAllUsers(UserFilter filter, Pageable pageable) {
     log.debug("Fetching all users with filter: {}", filter);
 
+    // By default, exclude soft-deleted users
     Specification<User> spec = Specification.where(null);
+    spec = spec.and((root, query, cb) -> cb.isNull(root.get("deletedAt")));
 
     if (filter.getUsername() != null && !filter.getUsername().isBlank()) {
       spec = spec.and(SpecificationUtils.contains("username", filter.getUsername()));
@@ -192,16 +196,64 @@ public class UserService implements UserDetailsService {
   }
 
   /**
-   * Deletes a user.
+   * Soft deletes a user by setting deletedAt timestamp and marking as inactive. User data is
+   * retained in the database for audit purposes.
    *
    * @param id the user ID
+   * @throws ResourceNotFoundException if user not found or already deleted
    */
   @Transactional
   public void deleteUser(Long id) {
-    log.info("Deleting user with id: {}", id);
-    if (!userRepository.existsById(id)) {
-      throw new ResourceNotFoundException("User", "id", id.toString());
+    log.info("Soft deleting user with id: {}", id);
+
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User", "id", id.toString()));
+
+    if (user.isDeleted()) {
+      throw new IllegalStateException("User is already deleted");
     }
-    userRepository.deleteById(id);
+
+    // Get current user for audit (deletedBy)
+    String deletedBy = getCurrentUsername();
+
+    user.softDelete(deletedBy);
+    userRepository.save(user);
+
+    log.info("User soft deleted successfully - id: {}, deletedBy: {}", id, deletedBy);
+  }
+
+  /** Gets the current authenticated username for audit purposes. */
+  private String getCurrentUsername() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    return (authentication != null && authentication.getName() != null)
+        ? authentication.getName()
+        : "system";
+  }
+
+  /**
+   * Restores a soft-deleted user.
+   *
+   * @param id the user ID
+   * @throws ResourceNotFoundException if user not found
+   */
+  @Transactional
+  public void restoreUser(Long id) {
+    log.info("Restoring user with id: {}", id);
+
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User", "id", id.toString()));
+
+    if (!user.isDeleted()) {
+      throw new IllegalStateException("User is not deleted");
+    }
+
+    user.restore();
+    userRepository.save(user);
+
+    log.info("User restored successfully - id: {}", id);
   }
 }

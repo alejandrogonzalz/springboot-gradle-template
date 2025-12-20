@@ -2,7 +2,7 @@ package com.example.backend.user.controller;
 
 import com.example.backend.common.ApiResponse;
 import com.example.backend.common.utils.DateUtils;
-import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.entity.User;
@@ -11,7 +11,6 @@ import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -35,7 +34,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 @Slf4j
-@SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Users", description = "User management operations")
 public class UserController {
 
@@ -49,7 +47,7 @@ public class UserController {
           "Creates a new user account. Only administrators can register new users. User must login separately after creation.")
   @PreAuthorize("hasAuthority('PERMISSION_MANAGE_USERS') or hasRole('ADMIN')")
   public ResponseEntity<ApiResponse<UserDto>> createUser(
-      @Valid @RequestBody RegisterRequest request) {
+      @Valid @RequestBody CreateUserRequest request) {
     User user = userService.registerUser(request);
     UserDto userDto = userMapper.toDto(user);
 
@@ -157,5 +155,16 @@ public class UserController {
   public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
     userService.deleteUser(id);
     return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));
+  }
+
+  @PostMapping("/{id}/restore")
+  @Operation(
+      summary = "Restore deleted user",
+      description = "Restores a soft-deleted user by clearing deletion fields")
+  @PreAuthorize("hasAuthority('PERMISSION_ADMIN') or hasAuthority('PERMISSION_MANAGE_USERS')")
+  public ResponseEntity<ApiResponse<UserDto>> restoreUser(@PathVariable Long id) {
+    userService.restoreUser(id);
+    UserDto user = userService.getUserById(id);
+    return ResponseEntity.ok(ApiResponse.success(user, "User restored successfully"));
   }
 }
