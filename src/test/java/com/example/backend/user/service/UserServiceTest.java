@@ -10,13 +10,16 @@ import static org.mockito.Mockito.*;
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.user.dto.CreateUserRequest;
+import com.example.backend.user.dto.DeletionStatus;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
+import com.example.backend.user.dto.UserStatisticsDto;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -288,5 +291,108 @@ class UserServiceTest {
 
     verify(userRepository).findById(1L);
     verify(userRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("Get all users - should return only active users by default")
+  void getAllUsersShouldReturnOnlyActiveUsersByDefault() {
+    // Create mix of active and deleted users
+    User activeUser = createTestUser();
+    User deletedUser = createTestUser();
+    deletedUser.setUsername("deleted");
+    deletedUser.softDelete("admin");
+
+    when(userRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(activeUser)));
+
+    UserFilter filter = UserFilter.builder().build(); // Default is ACTIVE_ONLY
+    Page<UserDto> result = userService.getAllUsers(filter, Pageable.unpaged());
+
+    assertThat(result.getContent()).hasSize(1);
+    verify(userRepository).findAll(any(Specification.class), any(Pageable.class));
+  }
+
+  @Test
+  @DisplayName("Get all users - should return only deleted users when DELETED_ONLY")
+  void getAllUsersShouldReturnOnlyDeletedUsersWhenDeletedOnly() {
+    User deletedUser = createTestUser();
+    deletedUser.setUsername("deleted");
+    deletedUser.softDelete("admin");
+
+    when(userRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(deletedUser)));
+
+    UserFilter filter = UserFilter.builder().deletionStatus(DeletionStatus.DELETED_ONLY).build();
+    Page<UserDto> result = userService.getAllUsers(filter, Pageable.unpaged());
+
+    assertThat(result.getContent()).hasSize(1);
+    verify(userRepository).findAll(any(Specification.class), any(Pageable.class));
+  }
+
+  @Test
+  @DisplayName("Get all users - should return all users when ALL")
+  void getAllUsersShouldReturnAllUsersWhenAll() {
+    // Create mix of active and deleted users
+    User activeUser = createTestUser();
+    User deletedUser = createTestUser();
+    deletedUser.setUsername("deleted");
+    deletedUser.softDelete("admin");
+
+    when(userRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(activeUser, deletedUser)));
+
+    UserFilter filter = UserFilter.builder().deletionStatus(DeletionStatus.ALL).build();
+    Page<UserDto> result = userService.getAllUsers(filter, Pageable.unpaged());
+
+    assertThat(result.getContent()).hasSize(2);
+    verify(userRepository).findAll(any(Specification.class), any(Pageable.class));
+  }
+
+  /** Helper method to create a test user. */
+  private User createTestUser() {
+    User user = new User();
+    user.setId(1L);
+    user.setUsername("testuser");
+    user.setPasswordHash("hashedPassword");
+    user.setEmail("test@example.com");
+    user.setFirstName("Test");
+    user.setLastName("User");
+    user.setRole(UserRole.USER);
+    user.setIsActive(true);
+    return user;
+  }
+
+  @Test
+  @DisplayName("Get user statistics - should return aggregate data")
+  void getUserStatisticsShouldReturnAggregateData() {
+    // Mock repository count methods
+    when(userRepository.countByDeletedAtIsNull()).thenReturn(150L);
+    when(userRepository.countByIsActiveAndDeletedAtIsNull(true)).thenReturn(120L);
+    when(userRepository.countByIsActiveAndDeletedAtIsNull(false)).thenReturn(30L);
+    when(userRepository.countByDeletedAtIsNotNull()).thenReturn(10L);
+
+    // Mock users by role
+    List<Object[]> roleStats = new ArrayList<>();
+    roleStats.add(new Object[] {UserRole.ADMIN, 5L});
+    roleStats.add(new Object[] {UserRole.USER, 140L});
+    roleStats.add(new Object[] {UserRole.GUEST, 5L});
+    when(userRepository.countUsersByRole()).thenReturn(roleStats);
+
+    UserStatisticsDto statistics = userService.getUserStatistics();
+
+    assertThat(statistics.getTotalUsers()).isEqualTo(150L);
+    assertThat(statistics.getTotalActiveUsers()).isEqualTo(120L);
+    assertThat(statistics.getTotalInactiveUsers()).isEqualTo(30L);
+    assertThat(statistics.getTotalDeletedUsers()).isEqualTo(10L);
+    assertThat(statistics.getUsersByRole()).hasSize(3);
+    assertThat(statistics.getUsersByRole().get("ADMIN")).isEqualTo(5L);
+    assertThat(statistics.getUsersByRole().get("USER")).isEqualTo(140L);
+    assertThat(statistics.getUsersByRole().get("GUEST")).isEqualTo(5L);
+    assertThat(statistics.getUsersByStatus()).hasSize(3);
+    assertThat(statistics.getUsersByStatus().get("ACTIVE")).isEqualTo(120L);
+    assertThat(statistics.getUsersByStatus().get("INACTIVE")).isEqualTo(30L);
+    assertThat(statistics.getUsersByStatus().get("DELETED")).isEqualTo(10L);
+
+    verify(userRepository).countUsersByRole();
   }
 }

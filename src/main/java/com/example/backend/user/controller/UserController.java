@@ -5,6 +5,7 @@ import com.example.backend.common.utils.DateUtils;
 import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
+import com.example.backend.user.dto.UserStatisticsDto;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
@@ -120,6 +121,37 @@ public class UserController {
 
     Page<UserDto> users = userService.getAllUsers(filter, pageable);
     return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully"));
+  }
+
+  @PostMapping("/all")
+  @Operation(
+      summary = "Get ALL users without pagination",
+      description =
+          "Retrieves ALL users matching the filter criteria WITHOUT pagination. "
+              + "Use with caution for large datasets (e.g., reports, exports). "
+              + "Accepts same filters as GET /users but returns complete List instead of Page.")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
+  public ResponseEntity<ApiResponse<List<UserDto>>> getAllUsersUnpaginated(
+      @RequestBody UserFilter filter) {
+
+    log.debug("POST /api/v1/users/all - Filter: {}", filter);
+
+    List<UserDto> users = userService.getAllUsersUnpaginated(filter);
+    return ResponseEntity.ok(
+        ApiResponse.success(users, users.size() + " users retrieved successfully"));
+  }
+
+  @GetMapping("/statistics")
+  @Operation(
+      summary = "Get user statistics",
+      description =
+          "Retrieves aggregate statistics about users including total counts, counts by role, "
+              + "and counts by status (active/inactive/deleted)")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
+  public ResponseEntity<ApiResponse<UserStatisticsDto>> getUserStatistics() {
+    log.debug("GET /api/v1/users/statistics");
+    UserStatisticsDto statistics = userService.getUserStatistics();
+    return ResponseEntity.ok(ApiResponse.success(statistics, "Statistics retrieved successfully"));
   }
 
   @GetMapping("/{id}")

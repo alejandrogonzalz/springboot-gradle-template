@@ -46,4 +46,11 @@ public class UserFilter {
 
   @Schema(description = "Last login date to", example = "2024-12-31T23:59:59Z")
   private Instant lastLoginDateTo;
+
+  @Schema(
+      description = "Filter by deletion status (ACTIVE_ONLY, DELETED_ONLY, ALL)",
+      example = "ACTIVE_ONLY",
+      defaultValue = "ACTIVE_ONLY")
+  @Builder.Default
+  private DeletionStatus deletionStatus = DeletionStatus.ACTIVE_ONLY;
 }

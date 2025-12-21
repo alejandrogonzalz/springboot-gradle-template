@@ -7,9 +7,13 @@ import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
+import com.example.backend.user.dto.UserStatisticsDto;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -114,10 +118,44 @@ public class UserService implements UserDetailsService {
    */
   public Page<UserDto> getAllUsers(UserFilter filter, Pageable pageable) {
     log.debug("Fetching all users with filter: {}", filter);
+    Specification<User> spec = buildUserSpecification(filter);
+    return userRepository.findAll(spec, pageable).map(userMapper::toDto);
+  }
 
-    // By default, exclude soft-deleted users
+  /**
+   * Gets all users without pagination - returns ALL records matching filter. Use with caution for
+   * large datasets.
+   *
+   * @param filter user filter criteria
+   * @return List of all UserDto matching the filter
+   */
+  public List<UserDto> getAllUsersUnpaginated(UserFilter filter) {
+    log.debug("Fetching ALL users (unpaginated) with filter: {}", filter);
+    Specification<User> spec = buildUserSpecification(filter);
+    return userRepository.findAll(spec).stream().map(userMapper::toDto).toList();
+  }
+
+  /**
+   * Builds a Specification for User filtering. Extracted to reuse in both paginated and unpaginated
+   * methods.
+   */
+  private Specification<User> buildUserSpecification(UserFilter filter) {
     Specification<User> spec = Specification.where(null);
-    spec = spec.and((root, query, cb) -> cb.isNull(root.get("deletedAt")));
+
+    // Apply deletion status filter
+    if (filter.getDeletionStatus() != null) {
+      switch (filter.getDeletionStatus()) {
+        case ACTIVE_ONLY:
+          spec = spec.and((root, query, cb) -> cb.isNull(root.get("deletedAt")));
+          break;
+        case DELETED_ONLY:
+          spec = spec.and((root, query, cb) -> cb.isNotNull(root.get("deletedAt")));
+          break;
+        case ALL:
+          // No filter on deletedAt - show all users
+          break;
+      }
+    }
 
     if (filter.getUsername() != null && !filter.getUsername().isBlank()) {
       spec = spec.and(SpecificationUtils.contains("username", filter.getUsername()));
@@ -156,7 +194,7 @@ public class UserService implements UserDetailsService {
                   "lastLoginDate", filter.getLastLoginDateFrom(), filter.getLastLoginDateTo()));
     }
 
-    return userRepository.findAll(spec, pageable).map(userMapper::toDto);
+    return spec;
   }
 
   /**
@@ -255,5 +293,48 @@ public class UserService implements UserDetailsService {
     userRepository.save(user);
 
     log.info("User restored successfully - id: {}", id);
+  }
+
+  /**
+   * Gets user table statistics.
+   *
+   * @return UserStatisticsDto containing aggregate data
+   */
+  public UserStatisticsDto getUserStatistics() {
+    log.debug("Fetching user statistics");
+
+    // Count total users (excluding deleted)
+    long totalUsers = userRepository.countByDeletedAtIsNull();
+
+    // Count active and inactive users (excluding deleted)
+    long totalActiveUsers = userRepository.countByIsActiveAndDeletedAtIsNull(true);
+    long totalInactiveUsers = userRepository.countByIsActiveAndDeletedAtIsNull(false);
+
+    // Count deleted users
+    long totalDeletedUsers = userRepository.countByDeletedAtIsNotNull();
+
+    // Count users by role (excluding deleted)
+    Map<String, Long> usersByRole = new HashMap<>();
+    List<Object[]> roleStats = userRepository.countUsersByRole();
+    for (Object[] row : roleStats) {
+      String role = row[0].toString();
+      Long count = ((Number) row[1]).longValue();
+      usersByRole.put(role, count);
+    }
+
+    // Build status map
+    Map<String, Long> usersByStatus = new HashMap<>();
+    usersByStatus.put("ACTIVE", totalActiveUsers);
+    usersByStatus.put("INACTIVE", totalInactiveUsers);
+    usersByStatus.put("DELETED", totalDeletedUsers);
+
+    return UserStatisticsDto.builder()
+        .totalUsers(totalUsers)
+        .totalActiveUsers(totalActiveUsers)
+        .totalInactiveUsers(totalInactiveUsers)
+        .totalDeletedUsers(totalDeletedUsers)
+        .usersByRole(usersByRole)
+        .usersByStatus(usersByStatus)
+        .build();
   }
 }
