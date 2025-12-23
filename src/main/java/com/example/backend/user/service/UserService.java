@@ -4,17 +4,23 @@ import com.example.backend.common.utils.SpecificationUtils;
 import com.example.backend.common.utils.TestUtils;
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
-import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
+import com.example.backend.user.dto.UserStatisticsDto;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -51,7 +57,7 @@ public class UserService implements UserDetailsService {
    * @return the created user
    */
   @Transactional
-  public User registerUser(RegisterRequest request) {
+  public User registerUser(CreateUserRequest request) {
     log.info("Registering new user: {}", TestUtils.toJsonString(request));
 
     if (userRepository.existsByUsername(request.getUsername())) {
@@ -112,11 +118,60 @@ public class UserService implements UserDetailsService {
    */
   public Page<UserDto> getAllUsers(UserFilter filter, Pageable pageable) {
     log.debug("Fetching all users with filter: {}", filter);
+    Specification<User> spec = buildUserSpecification(filter);
+    return userRepository.findAll(spec, pageable).map(userMapper::toDto);
+  }
 
+  /**
+   * Gets all users without pagination - returns ALL records matching filter. Use with caution for
+   * large datasets.
+   *
+   * @param filter user filter criteria
+   * @return List of all UserDto matching the filter
+   */
+  public List<UserDto> getAllUsersUnpaginated(UserFilter filter) {
+    log.debug("Fetching ALL users (unpaginated) with filter: {}", filter);
+    Specification<User> spec = buildUserSpecification(filter);
+    return userRepository.findAll(spec).stream().map(userMapper::toDto).toList();
+  }
+
+  /**
+   * Builds a Specification for User filtering. Extracted to reuse in both paginated and unpaginated
+   * methods.
+   */
+  private Specification<User> buildUserSpecification(UserFilter filter) {
     Specification<User> spec = Specification.where(null);
+
+    // Apply deletion status filter
+    if (filter.getDeletionStatus() != null) {
+      switch (filter.getDeletionStatus()) {
+        case ACTIVE_ONLY:
+          spec = spec.and((root, query, cb) -> cb.isNull(root.get("deletedAt")));
+          break;
+        case DELETED_ONLY:
+          spec = spec.and((root, query, cb) -> cb.isNotNull(root.get("deletedAt")));
+          break;
+        case ALL:
+          // No filter on deletedAt - show all users
+          break;
+      }
+    }
+
+    // Apply ID range filter
+    if (filter.getIdFrom() != null || filter.getIdTo() != null) {
+      spec = spec.and(SpecificationUtils.between("id", filter.getIdFrom(), filter.getIdTo()));
+    }
 
     if (filter.getUsername() != null && !filter.getUsername().isBlank()) {
       spec = spec.and(SpecificationUtils.contains("username", filter.getUsername()));
+    }
+
+    if (filter.getFirstName() != null && !filter.getFirstName().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("firstName", filter.getFirstName()));
+    }
+
+    if (filter.getLastName() != null && !filter.getLastName().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("lastName", filter.getLastName()));
     }
 
     if (filter.getEmail() != null && !filter.getEmail().isBlank()) {
@@ -125,6 +180,12 @@ public class UserService implements UserDetailsService {
 
     if (filter.getRoles() != null && !filter.getRoles().isEmpty()) {
       spec = spec.and(SpecificationUtils.in("role", filter.getRoles()));
+    }
+
+    if (filter.getPermissions() != null && !filter.getPermissions().isEmpty()) {
+      spec =
+          spec.and(
+              (root, query, cb) -> root.join("additionalPermissions").in(filter.getPermissions()));
     }
 
     if (filter.getIsActive() != null && !filter.getIsActive().isEmpty()) {
@@ -152,7 +213,19 @@ public class UserService implements UserDetailsService {
                   "lastLoginDate", filter.getLastLoginDateFrom(), filter.getLastLoginDateTo()));
     }
 
-    return userRepository.findAll(spec, pageable).map(userMapper::toDto);
+    if (filter.getCreatedBy() != null && !filter.getCreatedBy().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("createdBy", filter.getCreatedBy()));
+    }
+
+    if (filter.getUpdatedBy() != null && !filter.getUpdatedBy().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("updatedBy", filter.getUpdatedBy()));
+    }
+
+    if (filter.getDeletedBy() != null && !filter.getDeletedBy().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("deletedBy", filter.getDeletedBy()));
+    }
+
+    return spec;
   }
 
   /**
@@ -192,16 +265,107 @@ public class UserService implements UserDetailsService {
   }
 
   /**
-   * Deletes a user.
+   * Soft deletes a user by setting deletedAt timestamp and marking as inactive. User data is
+   * retained in the database for audit purposes.
    *
    * @param id the user ID
+   * @throws ResourceNotFoundException if user not found or already deleted
    */
   @Transactional
   public void deleteUser(Long id) {
-    log.info("Deleting user with id: {}", id);
-    if (!userRepository.existsById(id)) {
-      throw new ResourceNotFoundException("User", "id", id.toString());
+    log.info("Soft deleting user with id: {}", id);
+
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User", "id", id.toString()));
+
+    if (user.isDeleted()) {
+      throw new IllegalStateException("User is already deleted");
     }
-    userRepository.deleteById(id);
+
+    // Get current user for audit (deletedBy)
+    String deletedBy = getCurrentUsername();
+
+    user.softDelete(deletedBy);
+    userRepository.save(user);
+
+    log.info("User soft deleted successfully - id: {}, deletedBy: {}", id, deletedBy);
+  }
+
+  /** Gets the current authenticated username for audit purposes. */
+  private String getCurrentUsername() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    return (authentication != null && authentication.getName() != null)
+        ? authentication.getName()
+        : "system";
+  }
+
+  /**
+   * Restores a soft-deleted user.
+   *
+   * @param id the user ID
+   * @throws ResourceNotFoundException if user not found
+   */
+  @Transactional
+  public void restoreUser(Long id) {
+    log.info("Restoring user with id: {}", id);
+
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User", "id", id.toString()));
+
+    if (!user.isDeleted()) {
+      throw new IllegalStateException("User is not deleted");
+    }
+
+    user.restore();
+    userRepository.save(user);
+
+    log.info("User restored successfully - id: {}", id);
+  }
+
+  /**
+   * Gets user table statistics.
+   *
+   * @return UserStatisticsDto containing aggregate data
+   */
+  public UserStatisticsDto getUserStatistics() {
+    log.debug("Fetching user statistics");
+
+    // Count total users (excluding deleted)
+    long totalUsers = userRepository.countByDeletedAtIsNull();
+
+    // Count active and inactive users (excluding deleted)
+    long totalActiveUsers = userRepository.countByIsActiveAndDeletedAtIsNull(true);
+    long totalInactiveUsers = userRepository.countByIsActiveAndDeletedAtIsNull(false);
+
+    // Count deleted users
+    long totalDeletedUsers = userRepository.countByDeletedAtIsNotNull();
+
+    // Count users by role (excluding deleted)
+    Map<String, Long> usersByRole = new HashMap<>();
+    List<Object[]> roleStats = userRepository.countUsersByRole();
+    for (Object[] row : roleStats) {
+      String role = row[0].toString();
+      Long count = ((Number) row[1]).longValue();
+      usersByRole.put(role, count);
+    }
+
+    // Build status map
+    Map<String, Long> usersByStatus = new HashMap<>();
+    usersByStatus.put("ACTIVE", totalActiveUsers);
+    usersByStatus.put("INACTIVE", totalInactiveUsers);
+    usersByStatus.put("DELETED", totalDeletedUsers);
+
+    return UserStatisticsDto.builder()
+        .totalUsers(totalUsers)
+        .totalActiveUsers(totalActiveUsers)
+        .totalInactiveUsers(totalInactiveUsers)
+        .totalDeletedUsers(totalDeletedUsers)
+        .usersByRole(usersByRole)
+        .usersByStatus(usersByStatus)
+        .build();
   }
 }

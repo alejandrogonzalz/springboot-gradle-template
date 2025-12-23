@@ -11,10 +11,15 @@ CREATE TABLE IF NOT EXISTS users (
     last_login_date TIMESTAMP NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(50) NULL,
+    updated_by VARCHAR(50) NULL,
+    deleted_at TIMESTAMP NULL,
+    deleted_by VARCHAR(50) NULL,
     version BIGINT DEFAULT 0,
     INDEX idx_user_username (username),
     INDEX idx_user_email (email),
-    INDEX idx_user_active (is_active)
+    INDEX idx_user_active (is_active),
+    INDEX idx_user_deleted_at (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Create user_permissions table (for ElementCollection)

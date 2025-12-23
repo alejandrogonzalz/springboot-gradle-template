@@ -5,8 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.example.backend.security.JwtService;
+import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.LoginRequest;
-import com.example.backend.user.dto.RegisterRequest;
 import com.example.backend.user.entity.RefreshToken;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
@@ -42,14 +42,14 @@ class AuthenticationServiceTest {
 
   @InjectMocks private AuthenticationService authenticationService;
 
-  private RegisterRequest registerRequest;
+  private CreateUserRequest createUserRequest;
   private LoginRequest loginRequest;
   private User testUser;
 
   @BeforeEach
   void setUp() {
-    registerRequest =
-        RegisterRequest.builder()
+    createUserRequest =
+        CreateUserRequest.builder()
             .username("newuser")
             .password("SecurePass123!")
             .firstName("New")

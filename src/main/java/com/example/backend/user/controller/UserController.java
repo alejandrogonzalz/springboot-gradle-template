@@ -2,16 +2,17 @@ package com.example.backend.user.controller;
 
 import com.example.backend.common.ApiResponse;
 import com.example.backend.common.utils.DateUtils;
-import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
+import com.example.backend.user.dto.UserStatisticsDto;
+import com.example.backend.user.entity.Permission;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -35,7 +36,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 @Slf4j
-@SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Users", description = "User management operations")
 public class UserController {
 
@@ -49,7 +49,7 @@ public class UserController {
           "Creates a new user account. Only administrators can register new users. User must login separately after creation.")
   @PreAuthorize("hasAuthority('PERMISSION_MANAGE_USERS') or hasRole('ADMIN')")
   public ResponseEntity<ApiResponse<UserDto>> createUser(
-      @Valid @RequestBody RegisterRequest request) {
+      @Valid @RequestBody CreateUserRequest request) {
     User user = userService.registerUser(request);
     UserDto userDto = userMapper.toDto(user);
 
@@ -69,12 +69,25 @@ public class UserController {
               + "Example: /api/v1/users?roles=ADMIN,USER&isActive=true&createdAtFrom=01-01-2024&createdAtTo=31-12-2024")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<Page<UserDto>>> getAllUsers(
+      @Parameter(description = "Filter by user ID from (inclusive)", example = "1")
+          @RequestParam(required = false)
+          Long idFrom,
+      @Parameter(description = "Filter by user ID to (inclusive)", example = "100")
+          @RequestParam(required = false)
+          Long idTo,
       @Parameter(description = "Filter by username (contains)") @RequestParam(required = false)
           String username,
+      @Parameter(description = "Filter by first name (contains)") @RequestParam(required = false)
+          String firstName,
+      @Parameter(description = "Filter by last name (contains)") @RequestParam(required = false)
+          String lastName,
       @Parameter(description = "Filter by email (contains)") @RequestParam(required = false)
           String email,
       @Parameter(description = "Filter by roles (e.g., ADMIN,USER)") @RequestParam(required = false)
           List<UserRole> roles,
+      @Parameter(description = "Filter by permissions (e.g., READ,CREATE)")
+          @RequestParam(required = false)
+          List<Permission> permissions,
       @Parameter(description = "Filter by active status (e.g., true,false)")
           @RequestParam(required = false)
           List<Boolean> isActive,
@@ -92,6 +105,12 @@ public class UserController {
           String lastLoginDateFrom,
       @Parameter(description = "Last login date to (dd-MM-yyyy)") @RequestParam(required = false)
           String lastLoginDateTo,
+      @Parameter(description = "Filter by created by user") @RequestParam(required = false)
+          String createdBy,
+      @Parameter(description = "Filter by updated by user") @RequestParam(required = false)
+          String updatedBy,
+      @Parameter(description = "Filter by deleted by user") @RequestParam(required = false)
+          String deletedBy,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
@@ -106,10 +125,18 @@ public class UserController {
     // Build filter object
     UserFilter filter =
         UserFilter.builder()
+            .idFrom(idFrom)
+            .idTo(idTo)
             .username(username)
+            .firstName(firstName)
+            .lastName(lastName)
             .email(email)
             .roles(roles)
+            .permissions(permissions)
             .isActive(isActive)
+            .createdBy(createdBy)
+            .updatedBy(updatedBy)
+            .deletedBy(deletedBy)
             .createdAtFrom(createdAtFromInstant)
             .createdAtTo(createdAtToInstant)
             .updatedAtFrom(updatedAtFromInstant)
@@ -122,6 +149,37 @@ public class UserController {
 
     Page<UserDto> users = userService.getAllUsers(filter, pageable);
     return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully"));
+  }
+
+  @PostMapping("/all")
+  @Operation(
+      summary = "Get ALL users without pagination",
+      description =
+          "Retrieves ALL users matching the filter criteria WITHOUT pagination. "
+              + "Use with caution for large datasets (e.g., reports, exports). "
+              + "Accepts same filters as GET /users but returns complete List instead of Page.")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
+  public ResponseEntity<ApiResponse<List<UserDto>>> getAllUsersUnpaginated(
+      @RequestBody UserFilter filter) {
+
+    log.debug("POST /api/v1/users/all - Filter: {}", filter);
+
+    List<UserDto> users = userService.getAllUsersUnpaginated(filter);
+    return ResponseEntity.ok(
+        ApiResponse.success(users, users.size() + " users retrieved successfully"));
+  }
+
+  @GetMapping("/statistics")
+  @Operation(
+      summary = "Get user statistics",
+      description =
+          "Retrieves aggregate statistics about users including total counts, counts by role, "
+              + "and counts by status (active/inactive/deleted)")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
+  public ResponseEntity<ApiResponse<UserStatisticsDto>> getUserStatistics() {
+    log.debug("GET /api/v1/users/statistics");
+    UserStatisticsDto statistics = userService.getUserStatistics();
+    return ResponseEntity.ok(ApiResponse.success(statistics, "Statistics retrieved successfully"));
   }
 
   @GetMapping("/{id}")
@@ -157,5 +215,16 @@ public class UserController {
   public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
     userService.deleteUser(id);
     return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));
+  }
+
+  @PostMapping("/{id}/restore")
+  @Operation(
+      summary = "Restore deleted user",
+      description = "Restores a soft-deleted user by clearing deletion fields")
+  @PreAuthorize("hasAuthority('PERMISSION_ADMIN') or hasAuthority('PERMISSION_MANAGE_USERS')")
+  public ResponseEntity<ApiResponse<UserDto>> restoreUser(@PathVariable Long id) {
+    userService.restoreUser(id);
+    UserDto user = userService.getUserById(id);
+    return ResponseEntity.ok(ApiResponse.success(user, "User restored successfully"));
   }
 }
