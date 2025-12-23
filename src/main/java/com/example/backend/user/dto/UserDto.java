@@ -50,4 +50,16 @@ public class UserDto {
 
   @Schema(description = "Last update timestamp")
   private Instant updatedAt;
+
+  @Schema(description = "Username who created this user")
+  private String createdBy;
+
+  @Schema(description = "Username who last updated this user")
+  private String updatedBy;
+
+  @Schema(description = "Soft delete timestamp")
+  private Instant deletedAt;
+
+  @Schema(description = "Username who deleted this user")
+  private String deletedBy;
 }

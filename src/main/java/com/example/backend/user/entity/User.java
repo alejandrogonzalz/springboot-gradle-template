@@ -76,6 +76,12 @@ public class User extends BaseEntity implements UserDetails {
   @Column(name = "last_login_date")
   private Instant lastLoginDate;
 
+  @Column(name = "deleted_at")
+  private Instant deletedAt;
+
+  @Column(name = "deleted_by", length = 50)
+  private String deletedBy;
+
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "user_permissions", joinColumns = @JoinColumn(name = "user_id"))
   @Enumerated(EnumType.STRING)
@@ -196,5 +202,35 @@ public class User extends BaseEntity implements UserDetails {
       password.append(chars.charAt(index));
     }
     return password.toString();
+  }
+
+  /**
+   * Checks if this user is soft-deleted.
+   *
+   * @return true if user is deleted (deletedAt is not null)
+   */
+  public boolean isDeleted() {
+    return deletedAt != null;
+  }
+
+  /**
+   * Soft deletes this user by setting deletedAt timestamp and marking as inactive.
+   *
+   * @param deletedBy username of the user performing the deletion
+   */
+  public void softDelete(String deletedBy) {
+    this.deletedAt = Instant.now();
+    this.deletedBy = deletedBy;
+    this.isActive = false; // Also mark as inactive
+  }
+
+  /**
+   * Restores a soft-deleted user by clearing deletion fields. Note: isActive remains false and must
+   * be explicitly set if needed.
+   */
+  public void restore() {
+    this.deletedAt = null;
+    this.deletedBy = null;
+    // Don't automatically set isActive = true (admin decides)
   }
 }

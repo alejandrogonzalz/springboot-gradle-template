@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -232,6 +233,37 @@ public class GlobalExceptionHandler {
             .data(details)
             .build();
     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+  }
+
+  /**
+   * Handles invalid property reference in pagination/sorting.
+   *
+   * @param ex the exception
+   * @return error response with 400 status
+   */
+  @ExceptionHandler(PropertyReferenceException.class)
+  public ResponseEntity<ApiResponse<Map<String, String>>> handlePropertyReferenceException(
+      PropertyReferenceException ex) {
+    log.warn("Invalid property reference: {}", ex.getMessage());
+
+    String invalidProperty = ex.getPropertyName();
+    String entityType = ex.getType().getType().getSimpleName();
+
+    Map<String, String> details = new HashMap<>();
+    details.put("invalidProperty", invalidProperty);
+    details.put("entityType", entityType);
+    details.put(
+        "validProperties",
+        "username, firstName, lastName, email, role, isActive, createdAt, updatedAt,"
+            + " lastLoginDate, deletedAt");
+
+    ApiResponse<Map<String, String>> response =
+        ApiResponse.<Map<String, String>>builder()
+            .success(false)
+            .message("Invalid sort/filter property: '" + invalidProperty + "' for " + entityType)
+            .data(details)
+            .build();
+    return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
   }
 
   /**

@@ -9,14 +9,17 @@ import static org.mockito.Mockito.*;
 
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
-import com.example.backend.user.dto.RegisterRequest;
+import com.example.backend.user.dto.CreateUserRequest;
+import com.example.backend.user.dto.DeletionStatus;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
+import com.example.backend.user.dto.UserStatisticsDto;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -49,7 +52,7 @@ class UserServiceTest {
 
   private User testUser;
   private UserDto testUserDto;
-  private RegisterRequest registerRequest;
+  private CreateUserRequest createUserRequest;
 
   @BeforeEach
   void setUp() {
@@ -81,8 +84,8 @@ class UserServiceTest {
             .updatedAt(Instant.now())
             .build();
 
-    registerRequest =
-        RegisterRequest.builder()
+    createUserRequest =
+        CreateUserRequest.builder()
             .username("newuser")
             .password("Password123!")
             .email("newuser@example.com")
@@ -109,12 +112,12 @@ class UserServiceTest {
 
     when(userRepository.existsByUsername("newuser")).thenReturn(false);
     when(userRepository.existsByEmail("newuser@example.com")).thenReturn(false);
-    when(userMapper.toEntity(registerRequest)).thenReturn(newUser);
+    when(userMapper.toEntity(createUserRequest)).thenReturn(newUser);
     when(passwordEncoder.encode("Password123!")).thenReturn("hashedPassword");
     when(userRepository.save(any(User.class))).thenReturn(newUser);
 
     // When
-    User result = userService.registerUser(registerRequest);
+    User result = userService.registerUser(createUserRequest);
 
     // Then
     assertNotNull(result);
@@ -135,7 +138,7 @@ class UserServiceTest {
     when(userRepository.existsByUsername("newuser")).thenReturn(true);
 
     // When & Then
-    assertThatThrownBy(() -> userService.registerUser(registerRequest))
+    assertThatThrownBy(() -> userService.registerUser(createUserRequest))
         .isInstanceOf(DuplicateResourceException.class)
         .hasMessageContaining("Username already exists: newuser");
 
@@ -151,7 +154,7 @@ class UserServiceTest {
     when(userRepository.existsByEmail("newuser@example.com")).thenReturn(true);
 
     // When & Then
-    assertThatThrownBy(() -> userService.registerUser(registerRequest))
+    assertThatThrownBy(() -> userService.registerUser(createUserRequest))
         .isInstanceOf(DuplicateResourceException.class)
         .hasMessageContaining("Email already exists: newuser@example.com");
 
@@ -231,12 +234,184 @@ class UserServiceTest {
   }
 
   @Test
-  @DisplayName("Delete user - should delete when user exists")
-  void deleteUserWhenUserExistsShouldDeleteUser() {
-    when(userRepository.existsById(1L)).thenReturn(true);
-    doNothing().when(userRepository).deleteById(1L);
+  @DisplayName("Delete user - should soft delete when user exists")
+  void deleteUserWhenUserExistsShouldSoftDeleteUser() {
+    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+    when(userRepository.save(any(User.class))).thenReturn(testUser);
+
     userService.deleteUser(1L);
-    verify(userRepository).existsById(1L);
-    verify(userRepository).deleteById(1L);
+
+    verify(userRepository).findById(1L);
+    verify(userRepository).save(testUser);
+    // Verify soft delete was called on the user
+    assertThat(testUser.getDeletedAt()).isNotNull();
+    assertThat(testUser.getDeletedBy()).isNotNull();
+    assertThat(testUser.getIsActive()).isFalse();
+  }
+
+  @Test
+  @DisplayName("Delete user - should throw exception when already deleted")
+  void deleteUserWhenAlreadyDeletedShouldThrowException() {
+    testUser.softDelete("admin");
+    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+    assertThatThrownBy(() -> userService.deleteUser(1L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("User is already deleted");
+
+    verify(userRepository).findById(1L);
+    verify(userRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("Restore user - should restore when user is deleted")
+  void restoreUserWhenUserIsDeletedShouldRestoreUser() {
+    testUser.softDelete("admin");
+    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+    when(userRepository.save(any(User.class))).thenReturn(testUser);
+
+    userService.restoreUser(1L);
+
+    verify(userRepository).findById(1L);
+    verify(userRepository).save(testUser);
+    // Verify restore was called
+    assertThat(testUser.getDeletedAt()).isNull();
+    assertThat(testUser.getDeletedBy()).isNull();
+  }
+
+  @Test
+  @DisplayName("Restore user - should throw exception when user is not deleted")
+  void restoreUserWhenUserIsNotDeletedShouldThrowException() {
+    // User is not deleted (deletedAt is null)
+    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+    assertThatThrownBy(() -> userService.restoreUser(1L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("User is not deleted");
+
+    verify(userRepository).findById(1L);
+    verify(userRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("Get all users - should return only active users by default")
+  void getAllUsersShouldReturnOnlyActiveUsersByDefault() {
+    // Create mix of active and deleted users
+    User activeUser = createTestUser();
+    User deletedUser = createTestUser();
+    deletedUser.setUsername("deleted");
+    deletedUser.softDelete("admin");
+
+    when(userRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(activeUser)));
+
+    UserFilter filter = UserFilter.builder().build(); // Default is ACTIVE_ONLY
+    Page<UserDto> result = userService.getAllUsers(filter, Pageable.unpaged());
+
+    assertThat(result.getContent()).hasSize(1);
+    verify(userRepository).findAll(any(Specification.class), any(Pageable.class));
+  }
+
+  @Test
+  @DisplayName("Get all users - should return only deleted users when DELETED_ONLY")
+  void getAllUsersShouldReturnOnlyDeletedUsersWhenDeletedOnly() {
+    User deletedUser = createTestUser();
+    deletedUser.setUsername("deleted");
+    deletedUser.softDelete("admin");
+
+    when(userRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(deletedUser)));
+
+    UserFilter filter = UserFilter.builder().deletionStatus(DeletionStatus.DELETED_ONLY).build();
+    Page<UserDto> result = userService.getAllUsers(filter, Pageable.unpaged());
+
+    assertThat(result.getContent()).hasSize(1);
+    verify(userRepository).findAll(any(Specification.class), any(Pageable.class));
+  }
+
+  @Test
+  @DisplayName("Get all users - should return all users when ALL")
+  void getAllUsersShouldReturnAllUsersWhenAll() {
+    // Create mix of active and deleted users
+    User activeUser = createTestUser();
+    User deletedUser = createTestUser();
+    deletedUser.setUsername("deleted");
+    deletedUser.softDelete("admin");
+
+    when(userRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(activeUser, deletedUser)));
+
+    UserFilter filter = UserFilter.builder().deletionStatus(DeletionStatus.ALL).build();
+    Page<UserDto> result = userService.getAllUsers(filter, Pageable.unpaged());
+
+    assertThat(result.getContent()).hasSize(2);
+    verify(userRepository).findAll(any(Specification.class), any(Pageable.class));
+  }
+
+  /** Helper method to create a test user. */
+  private User createTestUser() {
+    User user = new User();
+    user.setId(1L);
+    user.setUsername("testuser");
+    user.setPasswordHash("hashedPassword");
+    user.setEmail("test@example.com");
+    user.setFirstName("Test");
+    user.setLastName("User");
+    user.setRole(UserRole.USER);
+    user.setIsActive(true);
+    return user;
+  }
+
+  @Test
+  @DisplayName("Get user statistics - should return aggregate data")
+  void getUserStatisticsShouldReturnAggregateData() {
+    // Mock repository count methods
+    when(userRepository.countByDeletedAtIsNull()).thenReturn(150L);
+    when(userRepository.countByIsActiveAndDeletedAtIsNull(true)).thenReturn(120L);
+    when(userRepository.countByIsActiveAndDeletedAtIsNull(false)).thenReturn(30L);
+    when(userRepository.countByDeletedAtIsNotNull()).thenReturn(10L);
+
+    // Mock users by role
+    List<Object[]> roleStats = new ArrayList<>();
+    roleStats.add(new Object[] {UserRole.ADMIN, 5L});
+    roleStats.add(new Object[] {UserRole.USER, 140L});
+    roleStats.add(new Object[] {UserRole.GUEST, 5L});
+    when(userRepository.countUsersByRole()).thenReturn(roleStats);
+
+    UserStatisticsDto statistics = userService.getUserStatistics();
+
+    assertThat(statistics.getTotalUsers()).isEqualTo(150L);
+    assertThat(statistics.getTotalActiveUsers()).isEqualTo(120L);
+    assertThat(statistics.getTotalInactiveUsers()).isEqualTo(30L);
+    assertThat(statistics.getTotalDeletedUsers()).isEqualTo(10L);
+    assertThat(statistics.getUsersByRole()).hasSize(3);
+    assertThat(statistics.getUsersByRole().get("ADMIN")).isEqualTo(5L);
+    assertThat(statistics.getUsersByRole().get("USER")).isEqualTo(140L);
+    assertThat(statistics.getUsersByRole().get("GUEST")).isEqualTo(5L);
+    assertThat(statistics.getUsersByStatus()).hasSize(3);
+    assertThat(statistics.getUsersByStatus().get("ACTIVE")).isEqualTo(120L);
+    assertThat(statistics.getUsersByStatus().get("INACTIVE")).isEqualTo(30L);
+    assertThat(statistics.getUsersByStatus().get("DELETED")).isEqualTo(10L);
+
+    verify(userRepository).countUsersByRole();
+  }
+
+  @Test
+  @DisplayName("Get all users - should filter by ID range")
+  void getAllUsersShouldFilterByIdRange() {
+    User user1 = createTestUser();
+    user1.setId(5L);
+    User user2 = createTestUser();
+    user2.setId(50L);
+    user2.setUsername("user2");
+
+    when(userRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(user1, user2)));
+
+    UserFilter filter = UserFilter.builder().idFrom(1L).idTo(100L).build();
+    Page<UserDto> result = userService.getAllUsers(filter, Pageable.unpaged());
+
+    assertThat(result.getContent()).hasSize(2);
+    verify(userRepository).findAll(any(Specification.class), any(Pageable.class));
   }
 }
