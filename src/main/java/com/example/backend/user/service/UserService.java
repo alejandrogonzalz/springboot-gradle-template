@@ -157,8 +157,21 @@ public class UserService implements UserDetailsService {
       }
     }
 
+    // Apply ID range filter
+    if (filter.getIdFrom() != null || filter.getIdTo() != null) {
+      spec = spec.and(SpecificationUtils.between("id", filter.getIdFrom(), filter.getIdTo()));
+    }
+
     if (filter.getUsername() != null && !filter.getUsername().isBlank()) {
       spec = spec.and(SpecificationUtils.contains("username", filter.getUsername()));
+    }
+
+    if (filter.getFirstName() != null && !filter.getFirstName().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("firstName", filter.getFirstName()));
+    }
+
+    if (filter.getLastName() != null && !filter.getLastName().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("lastName", filter.getLastName()));
     }
 
     if (filter.getEmail() != null && !filter.getEmail().isBlank()) {
@@ -167,6 +180,12 @@ public class UserService implements UserDetailsService {
 
     if (filter.getRoles() != null && !filter.getRoles().isEmpty()) {
       spec = spec.and(SpecificationUtils.in("role", filter.getRoles()));
+    }
+
+    if (filter.getPermissions() != null && !filter.getPermissions().isEmpty()) {
+      spec =
+          spec.and(
+              (root, query, cb) -> root.join("additionalPermissions").in(filter.getPermissions()));
     }
 
     if (filter.getIsActive() != null && !filter.getIsActive().isEmpty()) {
@@ -192,6 +211,18 @@ public class UserService implements UserDetailsService {
           spec.and(
               SpecificationUtils.between(
                   "lastLoginDate", filter.getLastLoginDateFrom(), filter.getLastLoginDateTo()));
+    }
+
+    if (filter.getCreatedBy() != null && !filter.getCreatedBy().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("createdBy", filter.getCreatedBy()));
+    }
+
+    if (filter.getUpdatedBy() != null && !filter.getUpdatedBy().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("updatedBy", filter.getUpdatedBy()));
+    }
+
+    if (filter.getDeletedBy() != null && !filter.getDeletedBy().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("deletedBy", filter.getDeletedBy()));
     }
 
     return spec;

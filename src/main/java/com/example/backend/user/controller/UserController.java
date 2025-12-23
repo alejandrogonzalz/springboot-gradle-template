@@ -6,6 +6,7 @@ import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.dto.UserStatisticsDto;
+import com.example.backend.user.entity.Permission;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
@@ -68,12 +69,25 @@ public class UserController {
               + "Example: /api/v1/users?roles=ADMIN,USER&isActive=true&createdAtFrom=01-01-2024&createdAtTo=31-12-2024")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<Page<UserDto>>> getAllUsers(
+      @Parameter(description = "Filter by user ID from (inclusive)", example = "1")
+          @RequestParam(required = false)
+          Long idFrom,
+      @Parameter(description = "Filter by user ID to (inclusive)", example = "100")
+          @RequestParam(required = false)
+          Long idTo,
       @Parameter(description = "Filter by username (contains)") @RequestParam(required = false)
           String username,
+      @Parameter(description = "Filter by first name (contains)") @RequestParam(required = false)
+          String firstName,
+      @Parameter(description = "Filter by last name (contains)") @RequestParam(required = false)
+          String lastName,
       @Parameter(description = "Filter by email (contains)") @RequestParam(required = false)
           String email,
       @Parameter(description = "Filter by roles (e.g., ADMIN,USER)") @RequestParam(required = false)
           List<UserRole> roles,
+      @Parameter(description = "Filter by permissions (e.g., READ,CREATE)")
+          @RequestParam(required = false)
+          List<Permission> permissions,
       @Parameter(description = "Filter by active status (e.g., true,false)")
           @RequestParam(required = false)
           List<Boolean> isActive,
@@ -91,6 +105,12 @@ public class UserController {
           String lastLoginDateFrom,
       @Parameter(description = "Last login date to (dd-MM-yyyy)") @RequestParam(required = false)
           String lastLoginDateTo,
+      @Parameter(description = "Filter by created by user") @RequestParam(required = false)
+          String createdBy,
+      @Parameter(description = "Filter by updated by user") @RequestParam(required = false)
+          String updatedBy,
+      @Parameter(description = "Filter by deleted by user") @RequestParam(required = false)
+          String deletedBy,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
@@ -105,10 +125,18 @@ public class UserController {
     // Build filter object
     UserFilter filter =
         UserFilter.builder()
+            .idFrom(idFrom)
+            .idTo(idTo)
             .username(username)
+            .firstName(firstName)
+            .lastName(lastName)
             .email(email)
             .roles(roles)
+            .permissions(permissions)
             .isActive(isActive)
+            .createdBy(createdBy)
+            .updatedBy(updatedBy)
+            .deletedBy(deletedBy)
             .createdAtFrom(createdAtFromInstant)
             .createdAtTo(createdAtToInstant)
             .updatedAtFrom(updatedAtFromInstant)

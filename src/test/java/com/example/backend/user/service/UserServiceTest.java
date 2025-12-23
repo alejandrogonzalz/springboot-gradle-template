@@ -395,4 +395,23 @@ class UserServiceTest {
 
     verify(userRepository).countUsersByRole();
   }
+
+  @Test
+  @DisplayName("Get all users - should filter by ID range")
+  void getAllUsersShouldFilterByIdRange() {
+    User user1 = createTestUser();
+    user1.setId(5L);
+    User user2 = createTestUser();
+    user2.setId(50L);
+    user2.setUsername("user2");
+
+    when(userRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(user1, user2)));
+
+    UserFilter filter = UserFilter.builder().idFrom(1L).idTo(100L).build();
+    Page<UserDto> result = userService.getAllUsers(filter, Pageable.unpaged());
+
+    assertThat(result.getContent()).hasSize(2);
+    verify(userRepository).findAll(any(Specification.class), any(Pageable.class));
+  }
 }
