@@ -184,6 +184,39 @@ class UserServiceTest {
   }
 
   @Test
+  @DisplayName("Load user by username - should throw exception when user is inactive")
+  void loadUserByUsernameWhenUserIsInactiveShouldThrowException() {
+    User inactiveUser = createTestUser();
+    inactiveUser.setIsActive(false);
+    inactiveUser.setDeletedAt(Instant.now());
+    inactiveUser.setDeletedBy("admin");
+
+    when(userRepository.findByUsername("inactiveuser")).thenReturn(Optional.of(inactiveUser));
+
+    assertThatThrownBy(() -> userService.loadUserByUsername("inactiveuser"))
+        .isInstanceOf(UsernameNotFoundException.class)
+        .hasMessageContaining("Account is inactive or has been deleted");
+  }
+
+  @Test
+  @DisplayName("Load user by username - should block all operations for inactive users")
+  void loadUserByUsernameForInactiveUserShouldBlockAllOperations() {
+    // Simulate: User has valid JWT but was deactivated by admin
+    User deactivatedUser = createTestUser();
+    deactivatedUser.setIsActive(false);
+    deactivatedUser.setDeletedAt(Instant.now());
+    deactivatedUser.setDeletedBy("admin");
+
+    when(userRepository.findByUsername("deactivated")).thenReturn(Optional.of(deactivatedUser));
+
+    // JWT filter will call loadUserByUsername() on every request
+    // This should block the user from ANY operation
+    assertThatThrownBy(() -> userService.loadUserByUsername("deactivated"))
+        .isInstanceOf(UsernameNotFoundException.class)
+        .hasMessageContaining("Account is inactive or has been deleted");
+  }
+
+  @Test
   @DisplayName("Get user by ID - should return user DTO when exists")
   void getUserByIdWhenUserExistsShouldReturnUserDto() {
     when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
@@ -258,6 +291,30 @@ class UserServiceTest {
     assertThatThrownBy(() -> userService.deleteUser(1L))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("User is already deleted");
+
+    verify(userRepository).findById(1L);
+    verify(userRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("Delete user - should throw exception when trying to delete own account")
+  void deleteUserWhenTryingToDeleteOwnAccountShouldThrowException() {
+    // Setup: User trying to delete themselves
+    testUser.setUsername("currentuser");
+    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+    // Mock SecurityContext to return "currentuser" as the authenticated user
+    org.springframework.security.core.context.SecurityContext securityContext =
+        mock(org.springframework.security.core.context.SecurityContext.class);
+    org.springframework.security.core.Authentication authentication =
+        mock(org.springframework.security.core.Authentication.class);
+    when(securityContext.getAuthentication()).thenReturn(authentication);
+    when(authentication.getName()).thenReturn("currentuser");
+    org.springframework.security.core.context.SecurityContextHolder.setContext(securityContext);
+
+    assertThatThrownBy(() -> userService.deleteUser(1L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("You cannot deactivate your own account");
 
     verify(userRepository).findById(1L);
     verify(userRepository, never()).save(any());
@@ -366,10 +423,9 @@ class UserServiceTest {
   @DisplayName("Get user statistics - should return aggregate data")
   void getUserStatisticsShouldReturnAggregateData() {
     // Mock repository count methods
-    when(userRepository.countByDeletedAtIsNull()).thenReturn(150L);
-    when(userRepository.countByIsActiveAndDeletedAtIsNull(true)).thenReturn(120L);
-    when(userRepository.countByIsActiveAndDeletedAtIsNull(false)).thenReturn(30L);
-    when(userRepository.countByDeletedAtIsNotNull()).thenReturn(10L);
+    when(userRepository.count()).thenReturn(150L);
+    when(userRepository.countByIsActive(true)).thenReturn(120L);
+    when(userRepository.countByIsActive(false)).thenReturn(30L);
 
     // Mock users by role
     List<Object[]> roleStats = new ArrayList<>();
@@ -383,15 +439,13 @@ class UserServiceTest {
     assertThat(statistics.getTotalUsers()).isEqualTo(150L);
     assertThat(statistics.getTotalActiveUsers()).isEqualTo(120L);
     assertThat(statistics.getTotalInactiveUsers()).isEqualTo(30L);
-    assertThat(statistics.getTotalDeletedUsers()).isEqualTo(10L);
     assertThat(statistics.getUsersByRole()).hasSize(3);
     assertThat(statistics.getUsersByRole().get("ADMIN")).isEqualTo(5L);
     assertThat(statistics.getUsersByRole().get("USER")).isEqualTo(140L);
     assertThat(statistics.getUsersByRole().get("GUEST")).isEqualTo(5L);
-    assertThat(statistics.getUsersByStatus()).hasSize(3);
+    assertThat(statistics.getUsersByStatus()).hasSize(2);
     assertThat(statistics.getUsersByStatus().get("ACTIVE")).isEqualTo(120L);
     assertThat(statistics.getUsersByStatus().get("INACTIVE")).isEqualTo(30L);
-    assertThat(statistics.getUsersByStatus().get("DELETED")).isEqualTo(10L);
 
     verify(userRepository).countUsersByRole();
   }

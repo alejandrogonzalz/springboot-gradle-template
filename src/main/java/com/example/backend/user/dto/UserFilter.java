@@ -42,8 +42,8 @@ public class UserFilter {
   @Schema(description = "Filter by permissions", example = "[\"READ\", \"CREATE\"]")
   private List<Permission> permissions;
 
-  @Schema(description = "Filter by active status", example = "[true, false]")
-  private List<Boolean> isActive;
+  @Schema(description = "Filter by active status", example = "true")
+  private Boolean isActive;
 
   @Schema(description = "Created date from", example = "2024-01-01T00:00:00Z")
   private Instant createdAtFrom;

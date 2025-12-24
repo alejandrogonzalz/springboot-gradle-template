@@ -15,25 +15,22 @@ import lombok.NoArgsConstructor;
 @Schema(description = "User table statistics")
 public class UserStatisticsDto {
 
-  @Schema(description = "Total number of users (excluding deleted)", example = "150")
+  @Schema(description = "Total number of users (all statuses)", example = "150")
   private Long totalUsers;
 
-  @Schema(description = "Total number of active users", example = "120")
+  @Schema(description = "Total number of active users (isActive=true)", example = "120")
   private Long totalActiveUsers;
 
-  @Schema(description = "Total number of inactive users", example = "30")
+  @Schema(description = "Total number of inactive users (isActive=false)", example = "30")
   private Long totalInactiveUsers;
 
-  @Schema(description = "Total number of soft-deleted users", example = "10")
-  private Long totalDeletedUsers;
-
   @Schema(
-      description = "Count of users per role",
+      description = "Count of users per role (all statuses)",
       example = "{\"ADMIN\": 5, \"USER\": 140, \"GUEST\": 5}")
   private Map<String, Long> usersByRole;
 
   @Schema(
       description = "Count of users per status",
-      example = "{\"ACTIVE\": 120, \"INACTIVE\": 30, \"DELETED\": 10}")
+      example = "{\"ACTIVE\": 120, \"INACTIVE\": 30}")
   private Map<String, Long> usersByStatus;
 }

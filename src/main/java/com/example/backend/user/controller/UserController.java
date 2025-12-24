@@ -90,7 +90,7 @@ public class UserController {
           List<Permission> permissions,
       @Parameter(description = "Filter by active status (e.g., true,false)")
           @RequestParam(required = false)
-          List<Boolean> isActive,
+          Boolean isActive,
       @Parameter(description = "Created date from (dd-MM-yyyy, e.g., 01-01-2024)")
           @RequestParam(required = false)
           String createdAtFrom,
@@ -212,9 +212,9 @@ public class UserController {
   @DeleteMapping("/{id}")
   @Operation(summary = "Delete user", description = "Deletes a user by ID")
   @PreAuthorize("hasAuthority('PERMISSION_DELETE') or hasAuthority('PERMISSION_ADMIN')")
-  public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
-    userService.deleteUser(id);
-    return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));
+  public ResponseEntity<ApiResponse<UserDto>> deleteUser(@PathVariable Long id) {
+    UserDto deletedUser = userService.deleteUser(id);
+    return ResponseEntity.ok(ApiResponse.success(deletedUser, "User deleted successfully"));
   }
 
   @PostMapping("/{id}/restore")
@@ -223,8 +223,7 @@ public class UserController {
       description = "Restores a soft-deleted user by clearing deletion fields")
   @PreAuthorize("hasAuthority('PERMISSION_ADMIN') or hasAuthority('PERMISSION_MANAGE_USERS')")
   public ResponseEntity<ApiResponse<UserDto>> restoreUser(@PathVariable Long id) {
-    userService.restoreUser(id);
-    UserDto user = userService.getUserById(id);
-    return ResponseEntity.ok(ApiResponse.success(user, "User restored successfully"));
+    UserDto restoredUser = userService.restoreUser(id);
+    return ResponseEntity.ok(ApiResponse.success(restoredUser, "User restored successfully"));
   }
 }

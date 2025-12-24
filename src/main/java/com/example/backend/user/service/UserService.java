@@ -41,10 +41,19 @@ public class UserService implements UserDetailsService {
   @Override
   public User loadUserByUsername(String username) throws UsernameNotFoundException {
     log.debug("Loading user by username: {}", username);
-    return userRepository
-        .findByUsername(username)
-        .orElseThrow(
-            () -> new UsernameNotFoundException("User not found with username: " + username));
+    User user =
+        userRepository
+            .findByUsername(username)
+            .orElseThrow(
+                () -> new UsernameNotFoundException("User not found with username: " + username));
+
+    if (!user.getIsActive()) {
+      log.warn("Inactive user attempted to login: {}", username);
+      throw new UsernameNotFoundException(
+          "Account is inactive or has been deleted. Please contact an administrator.");
+    }
+
+    return user;
   }
 
   /**
@@ -142,17 +151,21 @@ public class UserService implements UserDetailsService {
   private Specification<User> buildUserSpecification(UserFilter filter) {
     Specification<User> spec = Specification.where(null);
 
-    // Apply deletion status filter
-    if (filter.getDeletionStatus() != null) {
+    // Apply deletion status filter (uses isActive field) - only if isActive not explicitly set
+    if (filter.getIsActive() != null) {
+      // isActive explicitly set - use that directly
+      spec = spec.and(SpecificationUtils.equals("isActive", filter.getIsActive()));
+    } else if (filter.getDeletionStatus() != null) {
+      // isActive not set - use deletionStatus
       switch (filter.getDeletionStatus()) {
         case ACTIVE_ONLY:
-          spec = spec.and((root, query, cb) -> cb.isNull(root.get("deletedAt")));
+          spec = spec.and((root, query, cb) -> cb.isTrue(root.get("isActive")));
           break;
         case DELETED_ONLY:
-          spec = spec.and((root, query, cb) -> cb.isNotNull(root.get("deletedAt")));
+          spec = spec.and((root, query, cb) -> cb.isFalse(root.get("isActive")));
           break;
         case ALL:
-          // No filter on deletedAt - show all users
+          // No filter on isActive - show all users
           break;
       }
     }
@@ -186,10 +199,6 @@ public class UserService implements UserDetailsService {
       spec =
           spec.and(
               (root, query, cb) -> root.join("additionalPermissions").in(filter.getPermissions()));
-    }
-
-    if (filter.getIsActive() != null && !filter.getIsActive().isEmpty()) {
-      spec = spec.and(SpecificationUtils.in("isActive", filter.getIsActive()));
     }
 
     if (filter.getCreatedAtFrom() != null || filter.getCreatedAtTo() != null) {
@@ -269,10 +278,11 @@ public class UserService implements UserDetailsService {
    * retained in the database for audit purposes.
    *
    * @param id the user ID
+   * @return UserDto of the soft-deleted user
    * @throws ResourceNotFoundException if user not found or already deleted
    */
   @Transactional
-  public void deleteUser(Long id) {
+  public UserDto deleteUser(Long id) {
     log.info("Soft deleting user with id: {}", id);
 
     User user =
@@ -287,10 +297,16 @@ public class UserService implements UserDetailsService {
     // Get current user for audit (deletedBy)
     String deletedBy = getCurrentUsername();
 
+    // Prevent self-deactivation
+    if (user.getUsername().equals(deletedBy)) {
+      throw new IllegalStateException("You cannot deactivate your own account");
+    }
+
     user.softDelete(deletedBy);
-    userRepository.save(user);
+    User savedUser = userRepository.save(user);
 
     log.info("User soft deleted successfully - id: {}, deletedBy: {}", id, deletedBy);
+    return userMapper.toDto(savedUser);
   }
 
   /** Gets the current authenticated username for audit purposes. */
@@ -305,10 +321,11 @@ public class UserService implements UserDetailsService {
    * Restores a soft-deleted user.
    *
    * @param id the user ID
+   * @return UserDto of the restored user
    * @throws ResourceNotFoundException if user not found
    */
   @Transactional
-  public void restoreUser(Long id) {
+  public UserDto restoreUser(Long id) {
     log.info("Restoring user with id: {}", id);
 
     User user =
@@ -321,9 +338,10 @@ public class UserService implements UserDetailsService {
     }
 
     user.restore();
-    userRepository.save(user);
+    User savedUser = userRepository.save(user);
 
     log.info("User restored successfully - id: {}", id);
+    return userMapper.toDto(savedUser);
   }
 
   /**
@@ -334,17 +352,14 @@ public class UserService implements UserDetailsService {
   public UserStatisticsDto getUserStatistics() {
     log.debug("Fetching user statistics");
 
-    // Count total users (excluding deleted)
-    long totalUsers = userRepository.countByDeletedAtIsNull();
+    // Count total users (all statuses)
+    long totalUsers = userRepository.count();
 
-    // Count active and inactive users (excluding deleted)
-    long totalActiveUsers = userRepository.countByIsActiveAndDeletedAtIsNull(true);
-    long totalInactiveUsers = userRepository.countByIsActiveAndDeletedAtIsNull(false);
+    // Count active and inactive users
+    long totalActiveUsers = userRepository.countByIsActive(true);
+    long totalInactiveUsers = userRepository.countByIsActive(false);
 
-    // Count deleted users
-    long totalDeletedUsers = userRepository.countByDeletedAtIsNotNull();
-
-    // Count users by role (excluding deleted)
+    // Count users by role (all statuses)
     Map<String, Long> usersByRole = new HashMap<>();
     List<Object[]> roleStats = userRepository.countUsersByRole();
     for (Object[] row : roleStats) {
@@ -357,13 +372,11 @@ public class UserService implements UserDetailsService {
     Map<String, Long> usersByStatus = new HashMap<>();
     usersByStatus.put("ACTIVE", totalActiveUsers);
     usersByStatus.put("INACTIVE", totalInactiveUsers);
-    usersByStatus.put("DELETED", totalDeletedUsers);
 
     return UserStatisticsDto.builder()
         .totalUsers(totalUsers)
         .totalActiveUsers(totalActiveUsers)
         .totalInactiveUsers(totalInactiveUsers)
-        .totalDeletedUsers(totalDeletedUsers)
         .usersByRole(usersByRole)
         .usersByStatus(usersByStatus)
         .build();

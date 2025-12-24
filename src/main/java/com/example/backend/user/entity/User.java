@@ -210,7 +210,7 @@ public class User extends BaseEntity implements UserDetails {
    * @return true if user is deleted (deletedAt is not null)
    */
   public boolean isDeleted() {
-    return deletedAt != null;
+    return this.isActive == false;
   }
 
   /**
@@ -231,6 +231,7 @@ public class User extends BaseEntity implements UserDetails {
   public void restore() {
     this.deletedAt = null;
     this.deletedBy = null;
+    this.isActive = true;
     // Don't automatically set isActive = true (admin decides)
   }
 }

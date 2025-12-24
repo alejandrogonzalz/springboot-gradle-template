@@ -123,16 +123,16 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Handles illegal argument exceptions.
+   * Handles illegal state and argument exceptions (business logic violations).
    *
    * @param ex the exception
    * @param request the web request
    * @return error response with 400 status
    */
-  @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(
-      IllegalArgumentException ex, WebRequest request) {
-    log.error("Illegal argument: {}", ex.getMessage());
+  @ExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
+  public ResponseEntity<ApiResponse<Void>> handleIllegalExceptions(
+      RuntimeException ex, WebRequest request) {
+    log.error("Business logic violation ({}): {}", ex.getClass().getSimpleName(), ex.getMessage());
 
     ApiResponse<Void> response = ApiResponse.error(ex.getMessage());
     return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
@@ -267,7 +267,9 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Handles all other exceptions.
+   * Handles all other exceptions with detailed error information.
+   *
+   * <p>Returns descriptive error messages in development, generic message in production.
    *
    * @param ex the exception
    * @param request the web request
@@ -275,10 +277,24 @@ public class GlobalExceptionHandler {
    */
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<Void>> handleGlobalException(Exception ex, WebRequest request) {
-    log.error("Unexpected error occurred", ex);
+    log.error(
+        "Unexpected error occurred: {} - {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
 
-    ApiResponse<Void> response =
-        ApiResponse.error("An unexpected error occurred. Please try again later.");
+    // Build descriptive error message
+    String errorMessage =
+        String.format(
+            "Internal server error: %s - %s",
+            ex.getClass().getSimpleName(),
+            ex.getMessage() != null ? ex.getMessage() : "No details available");
+
+    // Include stack trace context for debugging
+    if (ex.getStackTrace().length > 0) {
+      StackTraceElement firstElement = ex.getStackTrace()[0];
+      errorMessage +=
+          String.format(" (at %s.%s)", firstElement.getClassName(), firstElement.getMethodName());
+    }
+
+    ApiResponse<Void> response = ApiResponse.error(errorMessage);
     return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
