@@ -122,6 +122,12 @@ public class AuthenticationService {
 
     User user = storedToken.getUser();
 
+    // Check if user account is active
+    if (!user.getIsActive()) {
+      throw new UnauthorizedException(
+          "Your account has been deactivated. Please contact an administrator.");
+    }
+
     // Generate new access token (refresh token stays the same)
     String newAccessToken = jwtService.generateToken(user);
 

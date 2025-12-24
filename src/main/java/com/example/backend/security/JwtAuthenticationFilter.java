@@ -1,5 +1,7 @@
 package com.example.backend.security;
 
+import com.example.backend.common.ApiResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -13,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -28,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private final JwtService jwtService;
   private final UserDetailsService userDetailsService;
+  private final ObjectMapper objectMapper;
 
   @Override
   protected void doFilterInternal(
@@ -36,37 +40,62 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       @NonNull FilterChain filterChain)
       throws ServletException, IOException {
 
-    final String jwt = extractJwtFromCookie(request); // Try to get JWT from accessToken cookie
+    final String jwt = extractJwtFromCookie(request);
     final String username;
 
     if (jwt == null) {
-      // No JWT token found, continue without authentication
       filterChain.doFilter(request, response);
       return;
     }
 
     try {
-      // Extract username from JWT
       username = jwtService.extractUsername(jwt);
 
-      // Validate token and set authentication
       if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-        UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+        try {
+          UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-        if (jwtService.isTokenValid(jwt, userDetails)) {
-          UsernamePasswordAuthenticationToken authToken =
-              new UsernamePasswordAuthenticationToken(
-                  userDetails, null, userDetails.getAuthorities());
-          authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-          SecurityContextHolder.getContext().setAuthentication(authToken);
+          if (jwtService.isTokenValid(jwt, userDetails)) {
+            UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+          }
+        } catch (UsernameNotFoundException e) {
+          log.warn("User account validation failed: {}", e.getMessage());
+          sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
+          return;
         }
       }
     } catch (Exception e) {
       log.warn("JWT validation failed: {}", e.getMessage());
-      // Continue without authentication
+      sendErrorResponse(
+          response,
+          HttpServletResponse.SC_UNAUTHORIZED,
+          "Invalid or expired token. Please login again.");
+      return;
     }
 
     filterChain.doFilter(request, response);
+  }
+
+  /**
+   * Sends a JSON error response with ApiResponse format.
+   *
+   * @param response the HTTP response
+   * @param status HTTP status code
+   * @param message error message
+   */
+  private void sendErrorResponse(HttpServletResponse response, int status, String message)
+      throws IOException {
+    response.setStatus(status);
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+
+    ApiResponse<Void> apiResponse = ApiResponse.error(message);
+    response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+    response.getWriter().flush();
   }
 
   /**
