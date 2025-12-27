@@ -72,6 +72,12 @@ public class UserFilter {
   @Schema(description = "Filter by deleted by user", example = "admin")
   private String deletedBy;
 
+  @Schema(description = "Deleted date from", example = "2024-01-01T00:00:00Z")
+  private Instant deletedAtFrom;
+
+  @Schema(description = "Deleted date to", example = "2024-12-31T23:59:59Z")
+  private Instant deletedAtTo;
+
   @Schema(
       description = "Filter by deletion status (ACTIVE_ONLY, DELETED_ONLY, ALL)",
       example = "ACTIVE_ONLY",

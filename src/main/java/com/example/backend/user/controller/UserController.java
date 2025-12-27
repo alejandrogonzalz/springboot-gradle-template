@@ -111,6 +111,10 @@ public class UserController {
           String updatedBy,
       @Parameter(description = "Filter by deleted by user") @RequestParam(required = false)
           String deletedBy,
+      @Parameter(description = "Deleted date from (dd-MM-yyyy)") @RequestParam(required = false)
+          String deletedAtFrom,
+      @Parameter(description = "Deleted date to (dd-MM-yyyy)") @RequestParam(required = false)
+          String deletedAtTo,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
@@ -121,6 +125,8 @@ public class UserController {
     Instant updatedAtToInstant = DateUtils.parseToEndOfDay(updatedAtTo);
     Instant lastLoginDateFromInstant = DateUtils.parseToStartOfDay(lastLoginDateFrom);
     Instant lastLoginDateToInstant = DateUtils.parseToEndOfDay(lastLoginDateTo);
+    Instant deletedAtFromInstant = DateUtils.parseToStartOfDay(deletedAtFrom);
+    Instant deletedAtToInstant = DateUtils.parseToEndOfDay(deletedAtTo);
 
     // Build filter object
     UserFilter filter =
@@ -143,6 +149,8 @@ public class UserController {
             .updatedAtTo(updatedAtToInstant)
             .lastLoginDateFrom(lastLoginDateFromInstant)
             .lastLoginDateTo(lastLoginDateToInstant)
+            .deletedAtFrom(deletedAtFromInstant)
+            .deletedAtTo(deletedAtToInstant)
             .build();
 
     log.debug("GET /api/v1/users - Filter: {}", filter);

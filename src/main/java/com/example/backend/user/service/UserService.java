@@ -234,6 +234,13 @@ public class UserService implements UserDetailsService {
       spec = spec.and(SpecificationUtils.contains("deletedBy", filter.getDeletedBy()));
     }
 
+    if (filter.getDeletedAtFrom() != null || filter.getDeletedAtTo() != null) {
+      spec =
+          spec.and(
+              SpecificationUtils.between(
+                  "deletedAt", filter.getDeletedAtFrom(), filter.getDeletedAtTo()));
+    }
+
     return spec;
   }
 
