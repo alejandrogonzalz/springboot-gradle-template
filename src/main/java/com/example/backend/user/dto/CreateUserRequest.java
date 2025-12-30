@@ -44,6 +44,11 @@ public class CreateUserRequest {
   @Schema(description = "Email address", example = "john.doe@example.com")
   private String email;
 
+  @NotBlank(message = "Phone is required")
+  @Size(max = 20, message = "Phone must not exceed 20 characters")
+  @Schema(description = "Phone number", example = "+1234567890")
+  private String phone;
+
   @NotNull(message = "Role is required")
   @Schema(description = "User role", example = "USER")
   private UserRole userRole;

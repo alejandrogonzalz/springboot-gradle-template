@@ -35,6 +35,9 @@ public class AuthenticationResponse {
   @Schema(description = "Last name", example = "Doe")
   private String lastName;
 
+  @Schema(description = "Phone number", example = "+1234567890")
+  private String phone;
+
   @Schema(description = "User role", example = "USER")
   private UserRole role;
 

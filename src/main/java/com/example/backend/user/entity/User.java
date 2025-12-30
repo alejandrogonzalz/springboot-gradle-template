@@ -65,6 +65,10 @@ public class User extends BaseEntity implements UserDetails {
   @Column(name = "email", unique = true, nullable = false, length = 255)
   private String email;
 
+  @Size(max = 20, message = "Phone must not exceed 20 characters")
+  @Column(name = "phone", length = 20)
+  private String phone;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false, length = 20)
   private UserRole role;

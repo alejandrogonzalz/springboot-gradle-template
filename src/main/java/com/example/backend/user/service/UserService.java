@@ -191,6 +191,10 @@ public class UserService implements UserDetailsService {
       spec = spec.and(SpecificationUtils.contains("email", filter.getEmail()));
     }
 
+    if (filter.getPhone() != null && !filter.getPhone().isBlank()) {
+      spec = spec.and(SpecificationUtils.contains("phone", filter.getPhone()));
+    }
+
     if (filter.getRoles() != null && !filter.getRoles().isEmpty()) {
       spec = spec.and(SpecificationUtils.in("role", filter.getRoles()));
     }
@@ -268,6 +272,9 @@ public class UserService implements UserDetailsService {
     }
     if (userDto.getEmail() != null) {
       user.setEmail(userDto.getEmail());
+    }
+    if (userDto.getPhone() != null) {
+      user.setPhone(userDto.getPhone());
     }
     if (userDto.getIsActive() != null) {
       user.setIsActive(userDto.getIsActive());

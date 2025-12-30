@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
+    phone VARCHAR(20) NULL,
     role ENUM('ADMIN', 'USER', 'GUEST') NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_date TIMESTAMP NULL,
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_user_username (username),
     INDEX idx_user_email (email),
     INDEX idx_user_active (is_active),
+    INDEX idx_user_phone (phone),
     INDEX idx_user_deleted_at (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

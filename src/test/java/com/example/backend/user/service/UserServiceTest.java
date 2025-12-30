@@ -106,6 +106,7 @@ class UserServiceTest {
             .email("newuser@example.com")
             .firstName("New")
             .lastName("User")
+            .phone("8681021923")
             .role(UserRole.USER)
             .isActive(true)
             .build();
@@ -124,6 +125,7 @@ class UserServiceTest {
     assertEquals("newuser", result.getUsername());
     assertEquals("newuser@example.com", result.getEmail());
     assertEquals(UserRole.USER, result.getRole());
+    assertEquals("8681021923", result.getPhone());
     assertTrue(result.getIsActive());
     verify(userRepository).existsByUsername("newuser");
     verify(userRepository).existsByEmail("newuser@example.com");

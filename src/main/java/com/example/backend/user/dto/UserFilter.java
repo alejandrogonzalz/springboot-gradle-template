@@ -78,6 +78,9 @@ public class UserFilter {
   @Schema(description = "Deleted date to", example = "2024-12-31T23:59:59Z")
   private Instant deletedAtTo;
 
+  @Schema(description = "Filter by phone (contains)", example = "+123")
+  private String phone;
+
   @Schema(
       description = "Filter by deletion status (ACTIVE_ONLY, DELETED_ONLY, ALL)",
       example = "ACTIVE_ONLY",

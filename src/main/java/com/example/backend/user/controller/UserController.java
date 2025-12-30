@@ -64,9 +64,9 @@ public class UserController {
       summary = "Get all users",
       description =
           "Retrieves all users with optional filtering and pagination. "
-              + "Supports filtering by: username (contains), email (contains), roles (in list), active status (in list), "
-              + "and date ranges (createdAt, updatedAt, lastLoginDate) in dd-MM-yyyy format. "
-              + "Example: /api/v1/users?roles=ADMIN,USER&isActive=true&createdAtFrom=01-01-2024&createdAtTo=31-12-2024")
+              + "Supports filtering by: username (contains), email (contains), phone (contains), roles (in list), active status (in list), "
+              + "and date ranges (createdAt, updatedAt, lastLoginDate, deletedAt) in dd-MM-yyyy format. "
+              + "Example: /api/v1/users?roles=ADMIN,USER&isActive=true&phone=+1234&deletedAtFrom=01-01-2024")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<ApiResponse<Page<UserDto>>> getAllUsers(
       @Parameter(description = "Filter by user ID from (inclusive)", example = "1")
@@ -83,6 +83,8 @@ public class UserController {
           String lastName,
       @Parameter(description = "Filter by email (contains)") @RequestParam(required = false)
           String email,
+      @Parameter(description = "Filter by phone (contains)") @RequestParam(required = false)
+          String phone,
       @Parameter(description = "Filter by roles (e.g., ADMIN,USER)") @RequestParam(required = false)
           List<UserRole> roles,
       @Parameter(description = "Filter by permissions (e.g., READ,CREATE)")
@@ -137,6 +139,7 @@ public class UserController {
             .firstName(firstName)
             .lastName(lastName)
             .email(email)
+            .phone(phone)
             .roles(roles)
             .permissions(permissions)
             .isActive(isActive)
