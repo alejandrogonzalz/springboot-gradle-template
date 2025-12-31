@@ -17,6 +17,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main entry point for the Backend Application.
@@ -29,6 +30,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 @EnableCaching
 @EnableJpaAuditing(auditorAwareRef = "auditorAwareImpl")
 @EnableAspectJAutoProxy
+@EnableScheduling
 @RequiredArgsConstructor
 public class BackendApplication {
 

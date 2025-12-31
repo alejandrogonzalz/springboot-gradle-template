@@ -34,4 +34,17 @@ public interface AuditLogRepository
 
   /** Count audit logs by entity type */
   long countByEntityType(String entityType);
+
+  /** Delete audit logs created before specified date */
+  long deleteByCreatedAtBefore(Instant cutoffDate);
+
+  /** Delete audit logs for a specific entity */
+  long deleteByEntityTypeAndEntityId(String entityType, Long entityId);
+
+  /** Delete audit logs for a specific user */
+  long deleteByUsername(String username);
+
+  /** Delete all audit logs (use with caution!) */
+  @Override
+  void deleteAll();
 }
