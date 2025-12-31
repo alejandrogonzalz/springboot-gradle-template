@@ -3,12 +3,14 @@ package com.example.backend.common.utils;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 
 public final class TestUtils {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   static {
+    MAPPER.registerModule(new JavaTimeModule());
     // Configure the mapper with common settings
     MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     MAPPER.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);

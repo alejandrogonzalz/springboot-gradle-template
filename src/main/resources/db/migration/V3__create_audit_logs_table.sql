@@ -1,0 +1,25 @@
+-- Create audit_logs table for tracking all auditable operations
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    operation VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(100) NOT NULL,
+    entity_id BIGINT NOT NULL,
+    description VARCHAR(500) NULL,
+    ip_address VARCHAR(45) NULL,
+    request_uri VARCHAR(255) NULL,
+    http_method VARCHAR(10) NULL,
+    changes TEXT NULL,
+    metadata TEXT NULL,
+    success BOOLEAN NOT NULL DEFAULT TRUE,
+    error_message VARCHAR(1000) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(50) NULL,
+    updated_by VARCHAR(50) NULL,
+    version BIGINT DEFAULT 0,
+    INDEX idx_audit_entity (entity_type, entity_id),
+    INDEX idx_audit_user (username),
+    INDEX idx_audit_operation (operation),
+    INDEX idx_audit_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

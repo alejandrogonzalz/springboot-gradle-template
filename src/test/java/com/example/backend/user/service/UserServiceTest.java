@@ -52,11 +52,26 @@ class UserServiceTest {
   @InjectMocks private UserService userService;
 
   private User testUser;
+  private User testUserToDelete;
   private UserDto testUserDto;
   private CreateUserRequest createUserRequest;
 
   @BeforeEach
   void setUp() {
+    testUserToDelete =
+        User.builder()
+            .id(2L)
+            .username("testUserToDelete")
+            .passwordHash("$2a$10$hashedpassword2")
+            .firstName("Test")
+            .lastName("User To Delete")
+            .email("test2@example.com")
+            .role(UserRole.USER)
+            .isActive(true)
+            .createdAt(Instant.now())
+            .updatedAt(Instant.now())
+            .build();
+
     testUser =
         User.builder()
             .id(1L)
@@ -272,17 +287,17 @@ class UserServiceTest {
   @Test
   @DisplayName("Delete user - should soft delete when user exists")
   void deleteUserWhenUserExistsShouldSoftDeleteUser() {
-    when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-    when(userRepository.save(any(User.class))).thenReturn(testUser);
+    when(userRepository.findById(2L)).thenReturn(Optional.of(testUserToDelete));
+    when(userRepository.save(any(User.class))).thenReturn(testUserToDelete);
 
-    userService.deleteUser(1L);
+    userService.deleteUser(2L);
 
-    verify(userRepository).findById(1L);
-    verify(userRepository).save(testUser);
+    verify(userRepository).findById(2L);
+    verify(userRepository).save(testUserToDelete);
     // Verify soft delete was called on the user
-    assertThat(testUser.getDeletedAt()).isNotNull();
-    assertThat(testUser.getDeletedBy()).isNotNull();
-    assertThat(testUser.getIsActive()).isFalse();
+    assertThat(testUserToDelete.getDeletedAt()).isNotNull();
+    assertThat(testUserToDelete.getDeletedBy()).isNotNull();
+    assertThat(testUserToDelete.getIsActive()).isFalse();
   }
 
   @Test

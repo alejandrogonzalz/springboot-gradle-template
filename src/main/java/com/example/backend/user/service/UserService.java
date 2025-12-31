@@ -1,5 +1,6 @@
 package com.example.backend.user.service;
 
+import com.example.backend.audit.annotation.Auditable;
 import com.example.backend.common.utils.PhoneValidator;
 import com.example.backend.common.utils.SpecificationUtils;
 import com.example.backend.common.utils.TestUtils;
@@ -68,6 +69,7 @@ public class UserService implements UserDetailsService {
    * @return the created user
    */
   @Transactional
+  @Auditable(operation = "CREATE_USER", entityType = "User", description = "User registration")
   public User registerUser(CreateUserRequest request) {
     log.info("Registering new user: {}", TestUtils.toJsonString(request));
 
@@ -262,6 +264,7 @@ public class UserService implements UserDetailsService {
    * @return updated UserDto
    */
   @Transactional
+  @Auditable(operation = "UPDATE_USER", entityType = "User", description = "User profile update")
   public UserDto updateUser(Long id, UpdateUserRequest request) {
     log.info("Updating user with id: {}", id);
     User user =
@@ -305,6 +308,7 @@ public class UserService implements UserDetailsService {
    * @throws ResourceNotFoundException if user not found or already deleted
    */
   @Transactional
+  @Auditable(operation = "DELETE_USER", entityType = "User", description = "User soft delete")
   public UserDto deleteUser(Long id) {
     log.info("Soft deleting user with id: {}", id);
 
@@ -348,6 +352,7 @@ public class UserService implements UserDetailsService {
    * @throws ResourceNotFoundException if user not found
    */
   @Transactional
+  @Auditable(operation = "RESTORE_USER", entityType = "User", description = "User restoration")
   public UserDto restoreUser(Long id) {
     log.info("Restoring user with id: {}", id);
 
