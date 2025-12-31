@@ -11,6 +11,7 @@ import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.DeletionStatus;
+import com.example.backend.user.dto.UpdateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.dto.UserStatisticsDto;
@@ -259,7 +260,7 @@ class UserServiceTest {
   @Test
   @DisplayName("Update user - should update and return updated user")
   void updateUserWithValidDataShouldReturnUpdatedUser() {
-    UserDto updateDto = UserDto.builder().firstName("Updated").build();
+    UpdateUserRequest updateDto = UpdateUserRequest.builder().firstName("Updated").build();
     when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
     when(userRepository.save(any(User.class))).thenReturn(testUser);
     when(userMapper.toDto(testUser)).thenReturn(testUserDto);

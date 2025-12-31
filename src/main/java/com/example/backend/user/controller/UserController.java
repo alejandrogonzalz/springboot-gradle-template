@@ -3,6 +3,7 @@ package com.example.backend.user.controller;
 import com.example.backend.common.ApiResponse;
 import com.example.backend.common.utils.DateUtils;
 import com.example.backend.user.dto.CreateUserRequest;
+import com.example.backend.user.dto.UpdateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.dto.UserStatisticsDto;
@@ -213,10 +214,10 @@ public class UserController {
 
   @PutMapping("/{id}")
   @Operation(summary = "Update user", description = "Updates an existing user")
-  @PreAuthorize("hasAuthority('PERMISSION_UPDATE') or #id == authentication.principal.id")
+  @PreAuthorize("hasAuthority('PERMISSION_ADMIN')")
   public ResponseEntity<ApiResponse<UserDto>> updateUser(
-      @PathVariable Long id, @RequestBody UserDto userDto) {
-    UserDto updatedUser = userService.updateUser(id, userDto);
+      @PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
+    UserDto updatedUser = userService.updateUser(id, request);
     return ResponseEntity.ok(ApiResponse.success(updatedUser, "User updated successfully"));
   }
 

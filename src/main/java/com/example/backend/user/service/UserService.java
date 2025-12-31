@@ -1,10 +1,12 @@
 package com.example.backend.user.service;
 
+import com.example.backend.common.utils.PhoneValidator;
 import com.example.backend.common.utils.SpecificationUtils;
 import com.example.backend.common.utils.TestUtils;
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.user.dto.CreateUserRequest;
+import com.example.backend.user.dto.UpdateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.dto.UserStatisticsDto;
@@ -78,6 +80,11 @@ public class UserService implements UserDetailsService {
     }
 
     User user = userMapper.toEntity(request);
+
+    // Format phone to E.164 if provided
+    if (user.getPhone() != null && !user.getPhone().isBlank()) {
+      user.setPhone(PhoneValidator.formatToE164(user.getPhone()));
+    }
     user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
     user.setRole(request.getUserRole());
     user.setIsActive(true);
@@ -252,11 +259,10 @@ public class UserService implements UserDetailsService {
    * Updates a user.
    *
    * @param id the user ID
-   * @param userDto the updated user data
    * @return updated UserDto
    */
   @Transactional
-  public UserDto updateUser(Long id, UserDto userDto) {
+  public UserDto updateUser(Long id, UpdateUserRequest request) {
     log.info("Updating user with id: {}", id);
     User user =
         userRepository
@@ -264,23 +270,26 @@ public class UserService implements UserDetailsService {
             .orElseThrow(() -> new ResourceNotFoundException("User", "id", id.toString()));
 
     // Update fields
-    if (userDto.getFirstName() != null) {
-      user.setFirstName(userDto.getFirstName());
+    if (request.getFirstName() != null) {
+      user.setFirstName(request.getFirstName());
     }
-    if (userDto.getLastName() != null) {
-      user.setLastName(userDto.getLastName());
+    if (request.getLastName() != null) {
+      user.setLastName(request.getLastName());
     }
-    if (userDto.getEmail() != null) {
-      user.setEmail(userDto.getEmail());
+    if (request.getEmail() != null) {
+      user.setEmail(request.getEmail());
     }
-    if (userDto.getPhone() != null) {
-      user.setPhone(userDto.getPhone());
+    if (request.getPhone() != null) {
+      // Format phone to E.164 if not blank
+      String phone =
+          request.getPhone().isBlank() ? null : PhoneValidator.formatToE164(request.getPhone());
+      user.setPhone(phone);
     }
-    if (userDto.getIsActive() != null) {
-      user.setIsActive(userDto.getIsActive());
+    if (request.getIsActive() != null) {
+      user.setIsActive(request.getIsActive());
     }
-    if (userDto.getRole() != null) {
-      user.setRole(userDto.getRole());
+    if (request.getRole() != null) {
+      user.setRole(request.getRole());
     }
 
     User savedUser = userRepository.save(user);

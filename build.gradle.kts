@@ -45,6 +45,9 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
 
+    // Phone number validation and formatting
+    implementation("com.googlecode.libphonenumber:libphonenumber:8.13.27")
+
     // Lombok for reducing boilerplate
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
