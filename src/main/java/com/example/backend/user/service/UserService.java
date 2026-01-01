@@ -1,8 +1,8 @@
 package com.example.backend.user.service;
 
 import com.example.backend.audit.annotation.Auditable;
+import com.example.backend.common.specification.SpecificationBuilder;
 import com.example.backend.common.utils.PhoneValidator;
-import com.example.backend.common.utils.SpecificationUtils;
 import com.example.backend.common.utils.TestUtils;
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
@@ -154,24 +154,26 @@ public class UserService implements UserDetailsService {
   }
 
   /**
-   * Builds a Specification for User filtering. Extracted to reuse in both paginated and unpaginated
-   * methods.
+   * Builds a Specification for User filtering using the fluent builder pattern.
+   *
+   * <p>Eliminates boilerplate code by using {@link SpecificationBuilder} instead of manual
+   * Specification.where(null).and(...) chains.
    */
   private Specification<User> buildUserSpecification(UserFilter filter) {
-    Specification<User> spec = Specification.where(null);
+    SpecificationBuilder<User> builder = SpecificationBuilder.builder();
 
     // Apply deletion status filter (uses isActive field) - only if isActive not explicitly set
     if (filter.getIsActive() != null) {
       // isActive explicitly set - use that directly
-      spec = spec.and(SpecificationUtils.equals("isActive", filter.getIsActive()));
+      builder.equals("isActive", filter.getIsActive());
     } else if (filter.getDeletionStatus() != null) {
       // isActive not set - use deletionStatus
       switch (filter.getDeletionStatus()) {
         case ACTIVE_ONLY:
-          spec = spec.and((root, query, cb) -> cb.isTrue(root.get("isActive")));
+          builder.isTrue("isActive");
           break;
         case DELETED_ONLY:
-          spec = spec.and((root, query, cb) -> cb.isFalse(root.get("isActive")));
+          builder.isFalse("isActive");
           break;
         case ALL:
           // No filter on isActive - show all users
@@ -179,82 +181,24 @@ public class UserService implements UserDetailsService {
       }
     }
 
-    // Apply ID range filter
-    if (filter.getIdFrom() != null || filter.getIdTo() != null) {
-      spec = spec.and(SpecificationUtils.between("id", filter.getIdFrom(), filter.getIdTo()));
-    }
-
-    if (filter.getUsername() != null && !filter.getUsername().isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("username", filter.getUsername()));
-    }
-
-    if (filter.getFirstName() != null && !filter.getFirstName().isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("firstName", filter.getFirstName()));
-    }
-
-    if (filter.getLastName() != null && !filter.getLastName().isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("lastName", filter.getLastName()));
-    }
-
-    if (filter.getEmail() != null && !filter.getEmail().isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("email", filter.getEmail()));
-    }
-
-    if (filter.getPhone() != null && !filter.getPhone().isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("phone", filter.getPhone()));
-    }
-
-    if (filter.getRoles() != null && !filter.getRoles().isEmpty()) {
-      spec = spec.and(SpecificationUtils.in("role", filter.getRoles()));
-    }
-
-    if (filter.getPermissions() != null && !filter.getPermissions().isEmpty()) {
-      spec =
-          spec.and(
-              (root, query, cb) -> root.join("additionalPermissions").in(filter.getPermissions()));
-    }
-
-    if (filter.getCreatedAtFrom() != null || filter.getCreatedAtTo() != null) {
-      spec =
-          spec.and(
-              SpecificationUtils.between(
-                  "createdAt", filter.getCreatedAtFrom(), filter.getCreatedAtTo()));
-    }
-
-    if (filter.getUpdatedAtFrom() != null || filter.getUpdatedAtTo() != null) {
-      spec =
-          spec.and(
-              SpecificationUtils.between(
-                  "updatedAt", filter.getUpdatedAtFrom(), filter.getUpdatedAtTo()));
-    }
-
-    if (filter.getLastLoginDateFrom() != null || filter.getLastLoginDateTo() != null) {
-      spec =
-          spec.and(
-              SpecificationUtils.between(
-                  "lastLoginDate", filter.getLastLoginDateFrom(), filter.getLastLoginDateTo()));
-    }
-
-    if (filter.getCreatedBy() != null && !filter.getCreatedBy().isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("createdBy", filter.getCreatedBy()));
-    }
-
-    if (filter.getUpdatedBy() != null && !filter.getUpdatedBy().isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("updatedBy", filter.getUpdatedBy()));
-    }
-
-    if (filter.getDeletedBy() != null && !filter.getDeletedBy().isBlank()) {
-      spec = spec.and(SpecificationUtils.contains("deletedBy", filter.getDeletedBy()));
-    }
-
-    if (filter.getDeletedAtFrom() != null || filter.getDeletedAtTo() != null) {
-      spec =
-          spec.and(
-              SpecificationUtils.between(
-                  "deletedAt", filter.getDeletedAtFrom(), filter.getDeletedAtTo()));
-    }
-
-    return spec;
+    // Apply all other filters using fluent builder
+    return builder
+        .between("id", filter.getIdFrom(), filter.getIdTo())
+        .contains("username", filter.getUsername())
+        .contains("firstName", filter.getFirstName())
+        .contains("lastName", filter.getLastName())
+        .contains("email", filter.getEmail())
+        .contains("phone", filter.getPhone())
+        .in("role", filter.getRoles())
+        .joinIn("additionalPermissions", filter.getPermissions())
+        .between("createdAt", filter.getCreatedAtFrom(), filter.getCreatedAtTo())
+        .between("updatedAt", filter.getUpdatedAtFrom(), filter.getUpdatedAtTo())
+        .between("lastLoginDate", filter.getLastLoginDateFrom(), filter.getLastLoginDateTo())
+        .contains("createdBy", filter.getCreatedBy())
+        .contains("updatedBy", filter.getUpdatedBy())
+        .contains("deletedBy", filter.getDeletedBy())
+        .between("deletedAt", filter.getDeletedAtFrom(), filter.getDeletedAtTo())
+        .build();
   }
 
   /**
