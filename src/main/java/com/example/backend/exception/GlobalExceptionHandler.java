@@ -1,6 +1,6 @@
 package com.example.backend.exception;
 
-import com.example.backend.common.ApiResponse;
+import com.example.backend.common.BaseResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.HashMap;
@@ -39,11 +39,11 @@ public class GlobalExceptionHandler {
    * @return error response with 404 status
    */
   @ExceptionHandler(ResourceNotFoundException.class)
-  public ResponseEntity<ApiResponse<Void>> handleResourceNotFoundException(
+  public ResponseEntity<BaseResponse<Void>> handleResourceNotFoundException(
       ResourceNotFoundException ex, WebRequest request) {
     log.error("Resource not found: {}", ex.getMessage());
 
-    ApiResponse<Void> response = ApiResponse.error(ex.getMessage());
+    BaseResponse<Void> response = BaseResponse.error(ex.getMessage());
     return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
   }
 
@@ -55,11 +55,11 @@ public class GlobalExceptionHandler {
    * @return error response with 409 status
    */
   @ExceptionHandler(DuplicateResourceException.class)
-  public ResponseEntity<ApiResponse<Void>> handleDuplicateResourceException(
+  public ResponseEntity<BaseResponse<Void>> handleDuplicateResourceException(
       DuplicateResourceException ex, WebRequest request) {
     log.error("Duplicate resource: {}", ex.getMessage());
 
-    ApiResponse<Void> response = ApiResponse.error(ex.getMessage());
+    BaseResponse<Void> response = BaseResponse.error(ex.getMessage());
     return new ResponseEntity<>(response, HttpStatus.CONFLICT);
   }
 
@@ -70,7 +70,7 @@ public class GlobalExceptionHandler {
    * @return error response with 400 status and field errors
    */
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(
+  public ResponseEntity<BaseResponse<Map<String, String>>> handleValidationExceptions(
       MethodArgumentNotValidException ex) {
     log.error("Validation error: {}", ex.getMessage());
 
@@ -84,8 +84,8 @@ public class GlobalExceptionHandler {
               errors.put(fieldName, errorMessage);
             });
 
-    ApiResponse<Map<String, String>> response =
-        ApiResponse.<Map<String, String>>builder()
+    BaseResponse<Map<String, String>> response =
+        BaseResponse.<Map<String, String>>builder()
             .success(false)
             .message("Validation failed")
             .data(errors)
@@ -101,7 +101,7 @@ public class GlobalExceptionHandler {
    * @return error response with 400 status
    */
   @ExceptionHandler(ConstraintViolationException.class)
-  public ResponseEntity<ApiResponse<Map<String, String>>> handleConstraintViolation(
+  public ResponseEntity<BaseResponse<Map<String, String>>> handleConstraintViolation(
       ConstraintViolationException ex) {
     log.error("Constraint violation: {}", ex.getMessage());
 
@@ -112,8 +112,8 @@ public class GlobalExceptionHandler {
                     violation -> violation.getPropertyPath().toString(),
                     ConstraintViolation::getMessage));
 
-    ApiResponse<Map<String, String>> response =
-        ApiResponse.<Map<String, String>>builder()
+    BaseResponse<Map<String, String>> response =
+        BaseResponse.<Map<String, String>>builder()
             .success(false)
             .message("Constraint violation")
             .data(errors)
@@ -130,11 +130,11 @@ public class GlobalExceptionHandler {
    * @return error response with 400 status
    */
   @ExceptionHandler({IllegalStateException.class, IllegalArgumentException.class})
-  public ResponseEntity<ApiResponse<Void>> handleIllegalExceptions(
+  public ResponseEntity<BaseResponse<Void>> handleIllegalExceptions(
       RuntimeException ex, WebRequest request) {
     log.error("Business logic violation ({}): {}", ex.getClass().getSimpleName(), ex.getMessage());
 
-    ApiResponse<Void> response = ApiResponse.error(ex.getMessage());
+    BaseResponse<Void> response = BaseResponse.error(ex.getMessage());
     return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
   }
 
@@ -145,10 +145,10 @@ public class GlobalExceptionHandler {
    * @return error response with 401 status
    */
   @ExceptionHandler(UnauthorizedException.class)
-  public ResponseEntity<ApiResponse<Void>> handleUnauthorizedException(UnauthorizedException ex) {
+  public ResponseEntity<BaseResponse<Void>> handleUnauthorizedException(UnauthorizedException ex) {
     log.warn("Unauthorized access: {}", ex.getMessage());
 
-    ApiResponse<Void> response = ApiResponse.error(ex.getMessage());
+    BaseResponse<Void> response = BaseResponse.error(ex.getMessage());
     return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
   }
 
@@ -159,10 +159,10 @@ public class GlobalExceptionHandler {
    * @return error response with 401 status
    */
   @ExceptionHandler(BadCredentialsException.class)
-  public ResponseEntity<ApiResponse<Map<String, String>>> handleAuthenticationException(
+  public ResponseEntity<BaseResponse<Map<String, String>>> handleAuthenticationException(
       BadCredentialsException ex) {
-    ApiResponse<Map<String, String>> response =
-        ApiResponse.<Map<String, String>>builder().success(false).message(ex.getMessage()).build();
+    BaseResponse<Map<String, String>> response =
+        BaseResponse.<Map<String, String>>builder().success(false).message(ex.getMessage()).build();
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
   }
 
@@ -173,12 +173,12 @@ public class GlobalExceptionHandler {
    * @return error response with 401 status
    */
   @ExceptionHandler(MissingRequestCookieException.class)
-  public ResponseEntity<ApiResponse<Void>> handleMissingCookieException(
+  public ResponseEntity<BaseResponse<Void>> handleMissingCookieException(
       MissingRequestCookieException ex) {
     log.warn("Missing required cookie: {}", ex.getCookieName());
 
-    ApiResponse<Void> response =
-        ApiResponse.error("Authentication required. Please log in to access this resource.");
+    BaseResponse<Void> response =
+        BaseResponse.error("Authentication required. Please log in to access this resource.");
     return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
   }
 
@@ -197,7 +197,7 @@ public class GlobalExceptionHandler {
    * @return error response with 403 status
    */
   @ExceptionHandler(AccessDeniedException.class)
-  public ResponseEntity<ApiResponse<Map<String, String>>> handleAccessDeniedException(
+  public ResponseEntity<BaseResponse<Map<String, String>>> handleAccessDeniedException(
       AccessDeniedException ex) {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
@@ -207,8 +207,8 @@ public class GlobalExceptionHandler {
     if (!isAuthenticated) {
       log.warn("Access denied - User not authenticated");
 
-      ApiResponse<Map<String, String>> response =
-          ApiResponse.<Map<String, String>>builder()
+      BaseResponse<Map<String, String>> response =
+          BaseResponse.<Map<String, String>>builder()
               .success(false)
               .message("Authentication required. Please log in to access this resource.")
               .build();
@@ -226,8 +226,8 @@ public class GlobalExceptionHandler {
     details.put("user", username);
     details.put("authorities", authorities);
 
-    ApiResponse<Map<String, String>> response =
-        ApiResponse.<Map<String, String>>builder()
+    BaseResponse<Map<String, String>> response =
+        BaseResponse.<Map<String, String>>builder()
             .success(false)
             .message("Access denied. You do not have the required permissions for this operation.")
             .data(details)
@@ -242,7 +242,7 @@ public class GlobalExceptionHandler {
    * @return error response with 400 status
    */
   @ExceptionHandler(PropertyReferenceException.class)
-  public ResponseEntity<ApiResponse<Map<String, String>>> handlePropertyReferenceException(
+  public ResponseEntity<BaseResponse<Map<String, String>>> handlePropertyReferenceException(
       PropertyReferenceException ex) {
     log.warn("Invalid property reference: {}", ex.getMessage());
 
@@ -257,8 +257,8 @@ public class GlobalExceptionHandler {
         "username, firstName, lastName, email, role, isActive, createdAt, updatedAt,"
             + " lastLoginDate, deletedAt");
 
-    ApiResponse<Map<String, String>> response =
-        ApiResponse.<Map<String, String>>builder()
+    BaseResponse<Map<String, String>> response =
+        BaseResponse.<Map<String, String>>builder()
             .success(false)
             .message("Invalid sort/filter property: '" + invalidProperty + "' for " + entityType)
             .data(details)
@@ -276,7 +276,8 @@ public class GlobalExceptionHandler {
    * @return error response with 500 status
    */
   @ExceptionHandler(Exception.class)
-  public ResponseEntity<ApiResponse<Void>> handleGlobalException(Exception ex, WebRequest request) {
+  public ResponseEntity<BaseResponse<Void>> handleGlobalException(
+      Exception ex, WebRequest request) {
     log.error(
         "Unexpected error occurred: {} - {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
 
@@ -294,7 +295,7 @@ public class GlobalExceptionHandler {
           String.format(" (at %s.%s)", firstElement.getClassName(), firstElement.getMethodName());
     }
 
-    ApiResponse<Void> response = ApiResponse.error(errorMessage);
+    BaseResponse<Void> response = BaseResponse.error(errorMessage);
     return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }

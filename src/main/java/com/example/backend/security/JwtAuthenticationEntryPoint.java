@@ -1,6 +1,6 @@
 package com.example.backend.security;
 
-import com.example.backend.common.ApiResponse;
+import com.example.backend.common.BaseResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,12 +43,12 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-    ApiResponse<?> apiResponse =
-        ApiResponse.builder()
+    BaseResponse<?> baseResponse =
+        BaseResponse.builder()
             .success(false)
             .message("Authentication required. Please provide a valid token.")
             .build();
 
-    objectMapper.writeValue(response.getOutputStream(), apiResponse);
+    objectMapper.writeValue(response.getOutputStream(), baseResponse);
   }
 }

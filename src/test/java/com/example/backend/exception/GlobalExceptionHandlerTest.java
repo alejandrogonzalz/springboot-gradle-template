@@ -2,7 +2,7 @@ package com.example.backend.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.backend.common.ApiResponse;
+import com.example.backend.common.BaseResponse;
 import com.example.backend.user.entity.User;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +39,7 @@ class GlobalExceptionHandlerTest {
 
     assertThat(ex).isNotNull();
 
-    ResponseEntity<ApiResponse<Map<String, String>>> response =
+    ResponseEntity<BaseResponse<Map<String, String>>> response =
         exceptionHandler.handlePropertyReferenceException(ex);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -59,7 +59,7 @@ class GlobalExceptionHandlerTest {
   void handleResourceNotFoundExceptionShouldReturn404() {
     ResourceNotFoundException ex = new ResourceNotFoundException("User", "id", "123");
 
-    ResponseEntity<ApiResponse<Void>> response =
+    ResponseEntity<BaseResponse<Void>> response =
         exceptionHandler.handleResourceNotFoundException(ex, null);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -73,7 +73,7 @@ class GlobalExceptionHandlerTest {
   void handleDuplicateResourceExceptionShouldReturn409() {
     DuplicateResourceException ex = new DuplicateResourceException("Username already exists");
 
-    ResponseEntity<ApiResponse<Void>> response =
+    ResponseEntity<BaseResponse<Void>> response =
         exceptionHandler.handleDuplicateResourceException(ex, null);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);

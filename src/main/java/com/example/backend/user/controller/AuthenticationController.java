@@ -1,6 +1,6 @@
 package com.example.backend.user.controller;
 
-import com.example.backend.common.ApiResponse;
+import com.example.backend.common.BaseResponse;
 import com.example.backend.exception.UnauthorizedException;
 import com.example.backend.security.JwtService;
 import com.example.backend.user.dto.AuthenticationResponse;
@@ -43,7 +43,7 @@ public class AuthenticationController {
       description =
           "Authenticates user credentials and returns user data. "
               + "Access and refresh tokens are set as HTTP-only cookies.")
-  public ResponseEntity<ApiResponse<AuthenticationResponse>> login(
+  public ResponseEntity<BaseResponse<AuthenticationResponse>> login(
       @Valid @RequestBody LoginRequest request) {
 
     // Authenticate and get user + response + tokens (all generated in service)
@@ -56,7 +56,7 @@ public class AuthenticationController {
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
         .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-        .body(ApiResponse.success(result.response(), "Login successful"));
+        .body(BaseResponse.success(result.response(), "Login successful"));
   }
 
   @PostMapping("/refresh")
@@ -65,7 +65,7 @@ public class AuthenticationController {
       description =
           "Generates a new access token using refresh token from HTTP-only cookie. "
               + "New tokens are set as HTTP-only cookies.")
-  public ResponseEntity<ApiResponse<AuthenticationResponse>> refreshToken(
+  public ResponseEntity<BaseResponse<AuthenticationResponse>> refreshToken(
       @CookieValue(name = "refreshToken") String refreshToken) {
 
     log.debug("Refreshing token from HTTP-only cookie");
@@ -80,7 +80,7 @@ public class AuthenticationController {
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
         .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-        .body(ApiResponse.success(result.response(), "Token refreshed successfully"));
+        .body(BaseResponse.success(result.response(), "Token refreshed successfully"));
   }
 
   @PostMapping("/logout")
@@ -89,7 +89,7 @@ public class AuthenticationController {
       description =
           "Logs out the current user by deleting their refresh token from the database "
               + "and clearing both token cookies.")
-  public ResponseEntity<ApiResponse<Void>> logout(
+  public ResponseEntity<BaseResponse<Void>> logout(
       @CookieValue(name = "refreshToken", required = false) String refreshToken) {
 
     authenticationService.logout(refreshToken);
@@ -116,7 +116,7 @@ public class AuthenticationController {
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, clearAccessCookie.toString())
         .header(HttpHeaders.SET_COOKIE, clearRefreshCookie.toString())
-        .body(ApiResponse.success(null, "Logged out successfully"));
+        .body(BaseResponse.success(null, "Logged out successfully"));
   }
 
   @GetMapping("/me")
@@ -124,7 +124,7 @@ public class AuthenticationController {
       summary = "Get current user information",
       description =
           "Returns the authenticated user's information based on the access token from cookie")
-  public ResponseEntity<ApiResponse<AuthenticationResponse>> getCurrentUser(
+  public ResponseEntity<BaseResponse<AuthenticationResponse>> getCurrentUser(
       @AuthenticationPrincipal User user) {
 
     if (user == null) {
@@ -132,7 +132,7 @@ public class AuthenticationController {
     }
 
     AuthenticationResponse response = authenticationService.getUserInfo(user);
-    return ResponseEntity.ok(ApiResponse.success(response, "User information retrieved"));
+    return ResponseEntity.ok(BaseResponse.success(response, "User information retrieved"));
   }
 
   /**

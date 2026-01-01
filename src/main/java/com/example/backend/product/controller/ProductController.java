@@ -1,6 +1,6 @@
 package com.example.backend.product.controller;
 
-import com.example.backend.common.ApiResponse;
+import com.example.backend.common.BaseResponse;
 import com.example.backend.product.dto.ProductDto;
 import com.example.backend.product.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -59,11 +59,11 @@ public class ProductController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "200",
             description = "Successfully retrieved products",
-            content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+            content = @Content(schema = @Schema(implementation = BaseResponse.class)))
       })
   @GetMapping
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<Page<ProductDto>>> getAllProducts(
+  public ResponseEntity<BaseResponse<Page<ProductDto>>> getAllProducts(
       @Parameter(description = "Page number (0-based)", example = "0")
           @RequestParam(defaultValue = "0")
           @Min(0)
@@ -93,7 +93,7 @@ public class ProductController {
     Pageable pageable = PageRequest.of(page, size, sort);
     Page<ProductDto> products = productService.getAllProducts(pageable);
 
-    return ResponseEntity.ok(ApiResponse.success(products));
+    return ResponseEntity.ok(BaseResponse.success(products));
   }
 
   /**
@@ -116,13 +116,13 @@ public class ProductController {
       })
   @GetMapping("/{id}")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<ProductDto>> getProductById(
+  public ResponseEntity<BaseResponse<ProductDto>> getProductById(
       @Parameter(description = "Product ID", example = "1", required = true) @PathVariable
           Long id) {
 
     log.info("GET /api/v1/products/{}", id);
     ProductDto product = productService.getProductById(id);
-    return ResponseEntity.ok(ApiResponse.success(product));
+    return ResponseEntity.ok(BaseResponse.success(product));
   }
 
   /**
@@ -134,13 +134,13 @@ public class ProductController {
   @Operation(summary = "Get product by SKU", description = "Retrieves a single product by its SKU")
   @GetMapping("/sku/{sku}")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<ProductDto>> getProductBySku(
+  public ResponseEntity<BaseResponse<ProductDto>> getProductBySku(
       @Parameter(description = "Product SKU", example = "LAP-001", required = true) @PathVariable
           String sku) {
 
     log.info("GET /api/v1/products/sku/{}", sku);
     ProductDto product = productService.getProductBySku(sku);
-    return ResponseEntity.ok(ApiResponse.success(product));
+    return ResponseEntity.ok(BaseResponse.success(product));
   }
 
   /**
@@ -166,13 +166,13 @@ public class ProductController {
       })
   @PostMapping
   @PreAuthorize("hasAuthority('PERMISSION_CREATE')")
-  public ResponseEntity<ApiResponse<ProductDto>> createProduct(
+  public ResponseEntity<BaseResponse<ProductDto>> createProduct(
       @Valid @RequestBody ProductDto productDto) {
 
     log.info("POST /api/v1/products - Creating product with sku: {}", productDto.getSku());
     ProductDto createdProduct = productService.createProduct(productDto);
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(ApiResponse.success(createdProduct, "Product created successfully"));
+        .body(BaseResponse.success(createdProduct, "Product created successfully"));
   }
 
   /**
@@ -199,13 +199,13 @@ public class ProductController {
       })
   @PutMapping("/{id}")
   @PreAuthorize("hasAuthority('PERMISSION_UPDATE')")
-  public ResponseEntity<ApiResponse<ProductDto>> updateProduct(
+  public ResponseEntity<BaseResponse<ProductDto>> updateProduct(
       @Parameter(description = "Product ID", example = "1", required = true) @PathVariable Long id,
       @Valid @RequestBody ProductDto productDto) {
 
     log.info("PUT /api/v1/products/{}", id);
     ProductDto updatedProduct = productService.updateProduct(id, productDto);
-    return ResponseEntity.ok(ApiResponse.success(updatedProduct, "Product updated successfully"));
+    return ResponseEntity.ok(BaseResponse.success(updatedProduct, "Product updated successfully"));
   }
 
   /**
@@ -226,13 +226,13 @@ public class ProductController {
       })
   @DeleteMapping("/{id}")
   @PreAuthorize("hasAuthority('PERMISSION_DELETE')")
-  public ResponseEntity<ApiResponse<Void>> deleteProduct(
+  public ResponseEntity<BaseResponse<Void>> deleteProduct(
       @Parameter(description = "Product ID", example = "1", required = true) @PathVariable
           Long id) {
 
     log.info("DELETE /api/v1/products/{}", id);
     productService.deleteProduct(id);
-    return ResponseEntity.ok(ApiResponse.success(null, "Product deleted successfully"));
+    return ResponseEntity.ok(BaseResponse.success(null, "Product deleted successfully"));
   }
 
   /**
@@ -246,7 +246,7 @@ public class ProductController {
   @Operation(summary = "Search products", description = "Searches products by name or description")
   @GetMapping("/search")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<Page<ProductDto>>> searchProducts(
+  public ResponseEntity<BaseResponse<Page<ProductDto>>> searchProducts(
       @Parameter(description = "Search keyword", example = "laptop", required = true) @RequestParam
           String keyword,
       @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -255,7 +255,7 @@ public class ProductController {
     log.info("GET /api/v1/products/search - keyword: {}", keyword);
     Pageable pageable = PageRequest.of(page, size);
     Page<ProductDto> products = productService.searchProducts(keyword, pageable);
-    return ResponseEntity.ok(ApiResponse.success(products));
+    return ResponseEntity.ok(BaseResponse.success(products));
   }
 
   /**
@@ -271,7 +271,7 @@ public class ProductController {
       description = "Retrieves all products in a specific category")
   @GetMapping("/category/{category}")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<Page<ProductDto>>> getProductsByCategory(
+  public ResponseEntity<BaseResponse<Page<ProductDto>>> getProductsByCategory(
       @Parameter(description = "Product category", example = "Electronics", required = true)
           @PathVariable
           String category,
@@ -281,7 +281,7 @@ public class ProductController {
     log.info("GET /api/v1/products/category/{}", category);
     Pageable pageable = PageRequest.of(page, size);
     Page<ProductDto> products = productService.getProductsByCategory(category, pageable);
-    return ResponseEntity.ok(ApiResponse.success(products));
+    return ResponseEntity.ok(BaseResponse.success(products));
   }
 
   /**
@@ -294,7 +294,7 @@ public class ProductController {
       summary = "Get low stock products",
       description = "Retrieves products with quantity below the specified threshold")
   @GetMapping("/low-stock")
-  public ResponseEntity<ApiResponse<List<ProductDto>>> getLowStockProducts(
+  public ResponseEntity<BaseResponse<List<ProductDto>>> getLowStockProducts(
       @Parameter(description = "Quantity threshold", example = "10")
           @RequestParam(defaultValue = "10")
           @Min(1)
@@ -302,6 +302,6 @@ public class ProductController {
 
     log.info("GET /api/v1/products/low-stock - threshold: {}", threshold);
     List<ProductDto> products = productService.getLowStockProducts(threshold);
-    return ResponseEntity.ok(ApiResponse.success(products));
+    return ResponseEntity.ok(BaseResponse.success(products));
   }
 }

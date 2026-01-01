@@ -1,6 +1,6 @@
 package com.example.backend.security;
 
-import com.example.backend.common.ApiResponse;
+import com.example.backend.common.BaseResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -81,7 +81,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Sends a JSON error response with ApiResponse format.
+   * Sends a JSON error response with BaseResponse format.
    *
    * @param response the HTTP response
    * @param status HTTP status code
@@ -93,7 +93,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     response.setContentType("application/json");
     response.setCharacterEncoding("UTF-8");
 
-    ApiResponse<Void> apiResponse = ApiResponse.error(message);
+    BaseResponse<Void> apiResponse = BaseResponse.error(message);
     response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
     response.getWriter().flush();
   }

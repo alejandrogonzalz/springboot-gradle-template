@@ -3,6 +3,7 @@ package com.example.backend.audit.controller;
 import com.example.backend.audit.dto.AuditLogDto;
 import com.example.backend.audit.dto.AuditLogFilter;
 import com.example.backend.audit.service.AuditLogService;
+import com.example.backend.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -56,7 +57,7 @@ public class AuditLogController {
             description =
                 "Forbidden - insufficient permissions (requires ADMIN or VIEW_AUDIT_LOGS)")
       })
-  public ResponseEntity<Page<AuditLogDto>> getAllAuditLogs(
+  public ResponseEntity<BaseResponse<Page<AuditLogDto>>> getAllAuditLogs(
       @Parameter(description = "Filter by username (partial match)") @RequestParam(required = false)
           String username,
       @Parameter(description = "Filter by operation type (e.g., CREATE_USER, UPDATE_USER)")
@@ -128,6 +129,6 @@ public class AuditLogController {
         auditLogs.getNumber() + 1,
         auditLogs.getTotalPages());
 
-    return ResponseEntity.ok(auditLogs);
+    return ResponseEntity.ok(BaseResponse.success(auditLogs, "Audit logs retrieved successfully"));
   }
 }

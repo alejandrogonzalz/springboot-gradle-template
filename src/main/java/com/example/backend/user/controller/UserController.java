@@ -1,6 +1,6 @@
 package com.example.backend.user.controller;
 
-import com.example.backend.common.ApiResponse;
+import com.example.backend.common.BaseResponse;
 import com.example.backend.common.utils.DateUtils;
 import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UpdateUserRequest;
@@ -49,14 +49,14 @@ public class UserController {
       description =
           "Creates a new user account. Only administrators can register new users. User must login separately after creation.")
   @PreAuthorize("hasAuthority('PERMISSION_MANAGE_USERS') or hasRole('ADMIN')")
-  public ResponseEntity<ApiResponse<UserDto>> createUser(
+  public ResponseEntity<BaseResponse<UserDto>> createUser(
       @Valid @RequestBody CreateUserRequest request) {
     User user = userService.registerUser(request);
     UserDto userDto = userMapper.toDto(user);
 
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(
-            ApiResponse.success(
+            BaseResponse.success(
                 userDto, "User created successfully. User must login to get access token."));
   }
 
@@ -69,7 +69,7 @@ public class UserController {
               + "and date ranges (createdAt, updatedAt, lastLoginDate, deletedAt) in dd-MM-yyyy format. "
               + "Example: /api/v1/users?roles=ADMIN,USER&isActive=true&phone=+1234&deletedAtFrom=01-01-2024")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<Page<UserDto>>> getAllUsers(
+  public ResponseEntity<BaseResponse<Page<UserDto>>> getAllUsers(
       @Parameter(description = "Filter by user ID from (inclusive)", example = "1")
           @RequestParam(required = false)
           Long idFrom,
@@ -160,7 +160,7 @@ public class UserController {
     log.debug("GET /api/v1/users - Filter: {}", filter);
 
     Page<UserDto> users = userService.getAllUsers(filter, pageable);
-    return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully"));
+    return ResponseEntity.ok(BaseResponse.success(users, "Users retrieved successfully"));
   }
 
   @PostMapping("/all")
@@ -171,14 +171,14 @@ public class UserController {
               + "Use with caution for large datasets (e.g., reports, exports). "
               + "Accepts same filters as GET /users but returns complete List instead of Page.")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<List<UserDto>>> getAllUsersUnpaginated(
+  public ResponseEntity<BaseResponse<List<UserDto>>> getAllUsersUnpaginated(
       @RequestBody UserFilter filter) {
 
     log.debug("POST /api/v1/users/all - Filter: {}", filter);
 
     List<UserDto> users = userService.getAllUsersUnpaginated(filter);
     return ResponseEntity.ok(
-        ApiResponse.success(users, users.size() + " users retrieved successfully"));
+        BaseResponse.success(users, users.size() + " users retrieved successfully"));
   }
 
   @GetMapping("/statistics")
@@ -188,18 +188,18 @@ public class UserController {
           "Retrieves aggregate statistics about users including total counts, counts by role, "
               + "and counts by status (active/inactive/deleted)")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<UserStatisticsDto>> getUserStatistics() {
+  public ResponseEntity<BaseResponse<UserStatisticsDto>> getUserStatistics() {
     log.debug("GET /api/v1/users/statistics");
     UserStatisticsDto statistics = userService.getUserStatistics();
-    return ResponseEntity.ok(ApiResponse.success(statistics, "Statistics retrieved successfully"));
+    return ResponseEntity.ok(BaseResponse.success(statistics, "Statistics retrieved successfully"));
   }
 
   @GetMapping("/{id}")
   @Operation(summary = "Get user by ID", description = "Retrieves a specific user by their ID")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<UserDto>> getUserById(@PathVariable Long id) {
+  public ResponseEntity<BaseResponse<UserDto>> getUserById(@PathVariable Long id) {
     UserDto user = userService.getUserById(id);
-    return ResponseEntity.ok(ApiResponse.success(user, "User retrieved successfully"));
+    return ResponseEntity.ok(BaseResponse.success(user, "User retrieved successfully"));
   }
 
   @GetMapping("/username/{username}")
@@ -207,26 +207,26 @@ public class UserController {
       summary = "Get user by username",
       description = "Retrieves a specific user by their username")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
-  public ResponseEntity<ApiResponse<UserDto>> getUserByUsername(@PathVariable String username) {
+  public ResponseEntity<BaseResponse<UserDto>> getUserByUsername(@PathVariable String username) {
     UserDto user = userService.getUserByUsername(username);
-    return ResponseEntity.ok(ApiResponse.success(user, "User retrieved successfully"));
+    return ResponseEntity.ok(BaseResponse.success(user, "User retrieved successfully"));
   }
 
   @PutMapping("/{id}")
   @Operation(summary = "Update user", description = "Updates an existing user")
   @PreAuthorize("hasAuthority('PERMISSION_ADMIN')")
-  public ResponseEntity<ApiResponse<UserDto>> updateUser(
+  public ResponseEntity<BaseResponse<UserDto>> updateUser(
       @PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
     UserDto updatedUser = userService.updateUser(id, request);
-    return ResponseEntity.ok(ApiResponse.success(updatedUser, "User updated successfully"));
+    return ResponseEntity.ok(BaseResponse.success(updatedUser, "User updated successfully"));
   }
 
   @DeleteMapping("/{id}")
   @Operation(summary = "Delete user", description = "Deletes a user by ID")
   @PreAuthorize("hasAuthority('PERMISSION_DELETE') or hasAuthority('PERMISSION_ADMIN')")
-  public ResponseEntity<ApiResponse<UserDto>> deleteUser(@PathVariable Long id) {
+  public ResponseEntity<BaseResponse<UserDto>> deleteUser(@PathVariable Long id) {
     UserDto deletedUser = userService.deleteUser(id);
-    return ResponseEntity.ok(ApiResponse.success(deletedUser, "User deleted successfully"));
+    return ResponseEntity.ok(BaseResponse.success(deletedUser, "User deleted successfully"));
   }
 
   @PostMapping("/{id}/restore")
@@ -234,8 +234,8 @@ public class UserController {
       summary = "Restore deleted user",
       description = "Restores a soft-deleted user by clearing deletion fields")
   @PreAuthorize("hasAuthority('PERMISSION_ADMIN') or hasAuthority('PERMISSION_MANAGE_USERS')")
-  public ResponseEntity<ApiResponse<UserDto>> restoreUser(@PathVariable Long id) {
+  public ResponseEntity<BaseResponse<UserDto>> restoreUser(@PathVariable Long id) {
     UserDto restoredUser = userService.restoreUser(id);
-    return ResponseEntity.ok(ApiResponse.success(restoredUser, "User restored successfully"));
+    return ResponseEntity.ok(BaseResponse.success(restoredUser, "User restored successfully"));
   }
 }

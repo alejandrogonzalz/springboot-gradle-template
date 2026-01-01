@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Generic API response wrapper")
-public class ApiResponse<T> {
+public class BaseResponse<T> {
 
   @Schema(description = "Indicates if the request was successful", example = "true")
   @Builder.Default
@@ -42,10 +42,10 @@ public class ApiResponse<T> {
    *
    * @param data the response data
    * @param <T> the type of data
-   * @return ApiResponse instance
+   * @return BaseResponse instance
    */
-  public static <T> ApiResponse<T> success(T data) {
-    return ApiResponse.<T>builder().success(true).data(data).timestamp(Instant.now()).build();
+  public static <T> BaseResponse<T> success(T data) {
+    return BaseResponse.<T>builder().success(true).data(data).timestamp(Instant.now()).build();
   }
 
   /**
@@ -54,10 +54,10 @@ public class ApiResponse<T> {
    * @param data the response data
    * @param message the response message
    * @param <T> the type of data
-   * @return ApiResponse instance
+   * @return BaseResponse instance
    */
-  public static <T> ApiResponse<T> success(T data, String message) {
-    return ApiResponse.<T>builder()
+  public static <T> BaseResponse<T> success(T data, String message) {
+    return BaseResponse.<T>builder()
         .success(true)
         .message(message)
         .data(data)
@@ -70,10 +70,10 @@ public class ApiResponse<T> {
    *
    * @param message the error message
    * @param <T> the type of data
-   * @return ApiResponse instance
+   * @return BaseResponse instance
    */
-  public static <T> ApiResponse<T> error(String message) {
-    return ApiResponse.<T>builder()
+  public static <T> BaseResponse<T> error(String message) {
+    return BaseResponse.<T>builder()
         .success(false)
         .message(message)
         .timestamp(Instant.now())
