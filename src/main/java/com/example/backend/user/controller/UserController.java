@@ -66,8 +66,8 @@ public class UserController {
       description =
           "Retrieves all users with optional filtering and pagination. "
               + "Supports filtering by: username (contains), email (contains), phone (contains), roles (in list), active status (in list), "
-              + "and date ranges (createdAt, updatedAt, lastLoginDate, deletedAt) in dd-MM-yyyy format. "
-              + "Example: /api/v1/users?roles=ADMIN,USER&isActive=true&phone=+1234&deletedAtFrom=01-01-2024")
+              + "and date ranges (createdAt, updatedAt, lastLoginDate, deletedAt) in ISO-8601 format. "
+              + "Example: /api/v1/users?roles=ADMIN,USER&isActive=true&phone=+1234&createdAtFrom=2024-01-01&createdAtTo=2024-01-01T23:59:59")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<BaseResponse<Page<UserDto>>> getAllUsers(
       @Parameter(description = "Filter by user ID from (inclusive)", example = "1")
@@ -94,19 +94,27 @@ public class UserController {
       @Parameter(description = "Filter by active status (e.g., true,false)")
           @RequestParam(required = false)
           Boolean isActive,
-      @Parameter(description = "Created date from (dd-MM-yyyy, e.g., 01-01-2024)")
+      @Parameter(
+              description = "Created date from (ISO-8601: yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss)",
+              example = "2024-01-01")
           @RequestParam(required = false)
           String createdAtFrom,
-      @Parameter(description = "Created date to (dd-MM-yyyy, e.g., 31-12-2024)")
+      @Parameter(
+              description = "Created date to (ISO-8601: yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss)",
+              example = "2024-12-31")
           @RequestParam(required = false)
           String createdAtTo,
-      @Parameter(description = "Updated date from (dd-MM-yyyy)") @RequestParam(required = false)
+      @Parameter(description = "Updated date from (ISO-8601)", example = "2024-01-01")
+          @RequestParam(required = false)
           String updatedAtFrom,
-      @Parameter(description = "Updated date to (dd-MM-yyyy)") @RequestParam(required = false)
+      @Parameter(description = "Updated date to (ISO-8601)", example = "2024-12-31")
+          @RequestParam(required = false)
           String updatedAtTo,
-      @Parameter(description = "Last login date from (dd-MM-yyyy)") @RequestParam(required = false)
+      @Parameter(description = "Last login date from (ISO-8601)", example = "2024-01-01")
+          @RequestParam(required = false)
           String lastLoginDateFrom,
-      @Parameter(description = "Last login date to (dd-MM-yyyy)") @RequestParam(required = false)
+      @Parameter(description = "Last login date to (ISO-8601)", example = "2024-12-31")
+          @RequestParam(required = false)
           String lastLoginDateTo,
       @Parameter(description = "Filter by created by user") @RequestParam(required = false)
           String createdBy,
@@ -114,22 +122,24 @@ public class UserController {
           String updatedBy,
       @Parameter(description = "Filter by deleted by user") @RequestParam(required = false)
           String deletedBy,
-      @Parameter(description = "Deleted date from (dd-MM-yyyy)") @RequestParam(required = false)
+      @Parameter(description = "Deleted date from (ISO-8601)", example = "2024-01-01")
+          @RequestParam(required = false)
           String deletedAtFrom,
-      @Parameter(description = "Deleted date to (dd-MM-yyyy)") @RequestParam(required = false)
+      @Parameter(description = "Deleted date to (ISO-8601)", example = "2024-12-31")
+          @RequestParam(required = false)
           String deletedAtTo,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
     // Parse date strings to Instant
-    Instant createdAtFromInstant = DateUtils.parseToStartOfDay(createdAtFrom);
-    Instant createdAtToInstant = DateUtils.parseToEndOfDay(createdAtTo);
-    Instant updatedAtFromInstant = DateUtils.parseToStartOfDay(updatedAtFrom);
-    Instant updatedAtToInstant = DateUtils.parseToEndOfDay(updatedAtTo);
-    Instant lastLoginDateFromInstant = DateUtils.parseToStartOfDay(lastLoginDateFrom);
-    Instant lastLoginDateToInstant = DateUtils.parseToEndOfDay(lastLoginDateTo);
-    Instant deletedAtFromInstant = DateUtils.parseToStartOfDay(deletedAtFrom);
-    Instant deletedAtToInstant = DateUtils.parseToEndOfDay(deletedAtTo);
+    Instant createdAtFromInstant = DateUtils.parseFlexibleDate(createdAtFrom);
+    Instant createdAtToInstant = DateUtils.parseFlexibleDateEndOfDay(createdAtTo);
+    Instant updatedAtFromInstant = DateUtils.parseFlexibleDate(updatedAtFrom);
+    Instant updatedAtToInstant = DateUtils.parseFlexibleDateEndOfDay(updatedAtTo);
+    Instant lastLoginDateFromInstant = DateUtils.parseFlexibleDate(lastLoginDateFrom);
+    Instant lastLoginDateToInstant = DateUtils.parseFlexibleDateEndOfDay(lastLoginDateTo);
+    Instant deletedAtFromInstant = DateUtils.parseFlexibleDate(deletedAtFrom);
+    Instant deletedAtToInstant = DateUtils.parseFlexibleDateEndOfDay(deletedAtTo);
 
     // Build filter object
     UserFilter filter =

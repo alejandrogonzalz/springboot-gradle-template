@@ -4,6 +4,7 @@ import com.example.backend.audit.dto.AuditLogDto;
 import com.example.backend.audit.dto.AuditLogFilter;
 import com.example.backend.audit.service.AuditLogService;
 import com.example.backend.common.BaseResponse;
+import com.example.backend.common.utils.DateUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -78,15 +79,17 @@ public class AuditLogController {
           @RequestParam(required = false)
           Boolean success,
       @Parameter(
-              description = "Filter by creation date from (ISO-8601 format)",
-              example = "2024-01-01T00:00:00Z")
+              description =
+                  "Filter by creation date from (ISO-8601: yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss)",
+              example = "2024-01-01")
           @RequestParam(required = false)
-          Instant createdAtFrom,
+          String createdAtFrom,
       @Parameter(
-              description = "Filter by creation date to (ISO-8601 format)",
-              example = "2024-12-31T23:59:59Z")
+              description =
+                  "Filter by creation date to (ISO-8601: yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss)",
+              example = "2024-12-31")
           @RequestParam(required = false)
-          Instant createdAtTo,
+          String createdAtTo,
       @Parameter(description = "Filter by multiple usernames") @RequestParam(required = false)
           List<String> usernames,
       @Parameter(description = "Filter by multiple operations") @RequestParam(required = false)
@@ -104,6 +107,10 @@ public class AuditLogController {
         entityType,
         entityId);
 
+    // Parse date strings to Instant
+    Instant createdAtFromInstant = DateUtils.parseFlexibleDate(createdAtFrom);
+    Instant createdAtToInstant = DateUtils.parseFlexibleDateEndOfDay(createdAtTo);
+
     AuditLogFilter filter =
         AuditLogFilter.builder()
             .username(username)
@@ -114,8 +121,8 @@ public class AuditLogController {
             .requestUri(requestUri)
             .httpMethod(httpMethod)
             .success(success)
-            .createdAtFrom(createdAtFrom)
-            .createdAtTo(createdAtTo)
+            .createdAtFrom(createdAtFromInstant)
+            .createdAtTo(createdAtToInstant)
             .usernames(usernames)
             .operations(operations)
             .entityTypes(entityTypes)
