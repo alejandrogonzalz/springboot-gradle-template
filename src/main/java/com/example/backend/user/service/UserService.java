@@ -1,6 +1,6 @@
 package com.example.backend.user.service;
 
-import com.example.backend.audit.annotation.Auditable;
+import com.example.backend.audit.aop.Auditable;
 import com.example.backend.common.specification.SpecificationBuilder;
 import com.example.backend.common.utils.PhoneValidator;
 import com.example.backend.common.utils.TestUtils;

@@ -1,7 +1,7 @@
 package com.example.backend.audit.controller;
 
+import com.example.backend.audit.dto.AuditLogDto;
 import com.example.backend.audit.dto.AuditLogFilter;
-import com.example.backend.audit.entity.AuditLog;
 import com.example.backend.audit.service.AuditLogService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,27 +40,6 @@ public class AuditLogController {
 
   private final AuditLogService auditLogService;
 
-  /**
-   * Gets all audit logs with optional filtering and pagination.
-   *
-   * <p>Requires ADMIN role or VIEW_AUDIT_LOGS permission.
-   *
-   * @param username filter by username (partial match)
-   * @param operation filter by operation type (partial match)
-   * @param entityType filter by entity type (partial match)
-   * @param entityId filter by entity ID (exact match)
-   * @param ipAddress filter by IP address (partial match)
-   * @param requestUri filter by request URI (partial match)
-   * @param httpMethod filter by HTTP method (partial match)
-   * @param success filter by success status (exact match)
-   * @param createdAtFrom filter by creation date from (inclusive)
-   * @param createdAtTo filter by creation date to (inclusive)
-   * @param usernames filter by multiple usernames (exact match)
-   * @param operations filter by multiple operations (exact match)
-   * @param entityTypes filter by multiple entity types (exact match)
-   * @param pageable pagination information (page, size, sort)
-   * @return Page of audit logs
-   */
   @GetMapping
   @PreAuthorize("hasRole('ADMIN') or hasAuthority('VIEW_AUDIT_LOGS')")
   @Operation(
@@ -77,7 +56,7 @@ public class AuditLogController {
             description =
                 "Forbidden - insufficient permissions (requires ADMIN or VIEW_AUDIT_LOGS)")
       })
-  public ResponseEntity<Page<AuditLog>> getAllAuditLogs(
+  public ResponseEntity<Page<AuditLogDto>> getAllAuditLogs(
       @Parameter(description = "Filter by username (partial match)") @RequestParam(required = false)
           String username,
       @Parameter(description = "Filter by operation type (e.g., CREATE_USER, UPDATE_USER)")
@@ -141,7 +120,7 @@ public class AuditLogController {
             .entityTypes(entityTypes)
             .build();
 
-    Page<AuditLog> auditLogs = auditLogService.getAllAuditLogs(filter, pageable);
+    Page<AuditLogDto> auditLogs = auditLogService.getAllAuditLogs(filter, pageable);
 
     log.info(
         "Returning {} audit logs (page {}/{})",

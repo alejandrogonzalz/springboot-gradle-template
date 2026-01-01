@@ -1,6 +1,5 @@
-package com.example.backend.audit.aspect;
+package com.example.backend.audit.aop;
 
-import com.example.backend.audit.annotation.Auditable;
 import com.example.backend.audit.entity.AuditLog;
 import com.example.backend.audit.repository.AuditLogRepository;
 import com.example.backend.common.BaseEntity;

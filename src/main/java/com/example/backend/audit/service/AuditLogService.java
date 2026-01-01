@@ -1,7 +1,9 @@
 package com.example.backend.audit.service;
 
+import com.example.backend.audit.dto.AuditLogDto;
 import com.example.backend.audit.dto.AuditLogFilter;
 import com.example.backend.audit.entity.AuditLog;
+import com.example.backend.audit.mapper.AuditLogMapper;
 import com.example.backend.audit.repository.AuditLogRepository;
 import com.example.backend.common.specification.SpecificationBuilder;
 import lombok.RequiredArgsConstructor;
@@ -25,18 +27,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
+  private final AuditLogMapper auditLogMapper;
 
   /**
    * Gets all audit logs with optional filtering and pagination.
    *
    * @param filter audit log filter criteria
    * @param pageable pagination information
-   * @return Page of AuditLog
+   * @return Page of AuditLogDto
    */
-  public Page<AuditLog> getAllAuditLogs(AuditLogFilter filter, Pageable pageable) {
+  public Page<AuditLogDto> getAllAuditLogs(AuditLogFilter filter, Pageable pageable) {
     log.debug("Fetching audit logs with filter: {}", filter);
     Specification<AuditLog> spec = buildAuditLogSpecification(filter);
-    return auditLogRepository.findAll(spec, pageable);
+    return auditLogRepository.findAll(spec, pageable).map(auditLogMapper::toDto);
   }
 
   /**

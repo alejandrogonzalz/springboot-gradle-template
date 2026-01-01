@@ -1,4 +1,4 @@
-package com.example.backend.audit.annotation;
+package com.example.backend.audit.aop;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

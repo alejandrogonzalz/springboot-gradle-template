@@ -1,10 +1,9 @@
-package com.example.backend.audit.aspect;
+package com.example.backend.audit.aop;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import com.example.backend.audit.annotation.Auditable;
 import com.example.backend.audit.entity.AuditLog;
 import com.example.backend.audit.repository.AuditLogRepository;
 import com.example.backend.user.entity.User;
