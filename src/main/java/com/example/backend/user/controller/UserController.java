@@ -128,18 +128,20 @@ public class UserController {
       @Parameter(description = "Deleted date to (ISO-8601)", example = "2024-12-31")
           @RequestParam(required = false)
           String deletedAtTo,
+      @Parameter(hidden = true) @RequestHeader(value = "X-Timezone", required = false)
+          String timezone,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
     // Parse date strings to Instant
-    Instant createdAtFromInstant = DateUtils.parseFlexibleDate(createdAtFrom);
-    Instant createdAtToInstant = DateUtils.parseFlexibleDateEndOfDay(createdAtTo);
-    Instant updatedAtFromInstant = DateUtils.parseFlexibleDate(updatedAtFrom);
-    Instant updatedAtToInstant = DateUtils.parseFlexibleDateEndOfDay(updatedAtTo);
-    Instant lastLoginDateFromInstant = DateUtils.parseFlexibleDate(lastLoginDateFrom);
-    Instant lastLoginDateToInstant = DateUtils.parseFlexibleDateEndOfDay(lastLoginDateTo);
-    Instant deletedAtFromInstant = DateUtils.parseFlexibleDate(deletedAtFrom);
-    Instant deletedAtToInstant = DateUtils.parseFlexibleDateEndOfDay(deletedAtTo);
+    Instant createdAtFromInstant = DateUtils.parseFlexibleDate(createdAtFrom, timezone);
+    Instant createdAtToInstant = DateUtils.parseFlexibleDateEndOfDay(createdAtTo, timezone);
+    Instant updatedAtFromInstant = DateUtils.parseFlexibleDate(updatedAtFrom, timezone);
+    Instant updatedAtToInstant = DateUtils.parseFlexibleDateEndOfDay(updatedAtTo, timezone);
+    Instant lastLoginDateFromInstant = DateUtils.parseFlexibleDate(lastLoginDateFrom, timezone);
+    Instant lastLoginDateToInstant = DateUtils.parseFlexibleDateEndOfDay(lastLoginDateTo, timezone);
+    Instant deletedAtFromInstant = DateUtils.parseFlexibleDate(deletedAtFrom, timezone);
+    Instant deletedAtToInstant = DateUtils.parseFlexibleDateEndOfDay(deletedAtTo, timezone);
 
     // Build filter object
     UserFilter filter =

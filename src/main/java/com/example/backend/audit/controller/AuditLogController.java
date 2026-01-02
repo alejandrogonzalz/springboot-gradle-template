@@ -21,6 +21,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -90,6 +91,8 @@ public class AuditLogController {
               example = "2024-12-31")
           @RequestParam(required = false)
           String createdAtTo,
+      @Parameter(hidden = true) @RequestHeader(value = "X-Timezone", required = false)
+          String timezone,
       @Parameter(description = "Filter by multiple usernames") @RequestParam(required = false)
           List<String> usernames,
       @Parameter(description = "Filter by multiple operations") @RequestParam(required = false)
@@ -108,8 +111,8 @@ public class AuditLogController {
         entityId);
 
     // Parse date strings to Instant
-    Instant createdAtFromInstant = DateUtils.parseFlexibleDate(createdAtFrom);
-    Instant createdAtToInstant = DateUtils.parseFlexibleDateEndOfDay(createdAtTo);
+    Instant createdAtFromInstant = DateUtils.parseFlexibleDate(createdAtFrom, timezone);
+    Instant createdAtToInstant = DateUtils.parseFlexibleDateEndOfDay(createdAtTo, timezone);
 
     AuditLogFilter filter =
         AuditLogFilter.builder()

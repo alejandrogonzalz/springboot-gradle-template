@@ -588,4 +588,296 @@ class DateUtilsTest {
       assertThat(result).isEqualTo("15-01-2024");
     }
   }
+
+  @Nested
+  @DisplayName("Timezone-Aware Parsing - parseFlexibleDate(String, String)")
+  class TimezoneAwareDateTests {
+
+    @Test
+    @DisplayName("Should parse date with America/Chicago timezone (UTC-6)")
+    void shouldParseDateWithChicagoTimezone() {
+      // Given
+      String dateStr = "2024-01-15";
+      String timezone = "America/Chicago";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDate(dateStr, timezone);
+
+      // Then - Start of day in Chicago is 6 hours ahead in UTC
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-15T06:00:00Z");
+    }
+
+    @Test
+    @DisplayName("Should parse date with Europe/London timezone (UTC+0/UTC+1)")
+    void shouldParseDateWithLondonTimezone() {
+      // Given - January is GMT (UTC+0)
+      String dateStr = "2024-01-15";
+      String timezone = "Europe/London";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDate(dateStr, timezone);
+
+      // Then
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-15T00:00:00Z");
+    }
+
+    @Test
+    @DisplayName("Should parse date with Asia/Tokyo timezone (UTC+9)")
+    void shouldParseDateWithTokyoTimezone() {
+      // Given
+      String dateStr = "2024-01-15";
+      String timezone = "Asia/Tokyo";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDate(dateStr, timezone);
+
+      // Then - Start of day in Tokyo is 9 hours behind in UTC (previous day)
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-14T15:00:00Z");
+    }
+
+    @Test
+    @DisplayName("Should parse datetime with timezone applied")
+    void shouldParseDateTimeWithTimezoneApplied() {
+      // Given
+      String dateTimeStr = "2024-01-15T10:30:00";
+      String timezone = "America/Chicago";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDate(dateTimeStr, timezone);
+
+      // Then - 10:30 AM CST = 4:30 PM UTC
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-15T16:30:00Z");
+    }
+
+    @Test
+    @DisplayName("Should ignore timezone when instant with Z provided")
+    void shouldIgnoreTimezoneWhenInstantWithZProvided() {
+      // Given
+      String instantStr = "2024-01-15T10:30:00Z";
+      String timezone = "America/Chicago";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDate(instantStr, timezone);
+
+      // Then - Should parse as-is, ignore timezone
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-15T10:30:00Z");
+    }
+
+    @Test
+    @DisplayName("Should default to UTC when timezone is null")
+    void shouldDefaultToUtcWhenTimezoneIsNull() {
+      // Given
+      String dateStr = "2024-01-15";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDate(dateStr, null);
+
+      // Then
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-15T00:00:00Z");
+    }
+
+    @Test
+    @DisplayName("Should default to UTC when timezone is blank")
+    void shouldDefaultToUtcWhenTimezoneIsBlank() {
+      // Given
+      String dateStr = "2024-01-15";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDate(dateStr, "   ");
+
+      // Then
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-15T00:00:00Z");
+    }
+
+    @Test
+    @DisplayName("Should throw exception for invalid timezone")
+    void shouldThrowExceptionForInvalidTimezone() {
+      // Given
+      String dateStr = "2024-01-15";
+      String invalidTimezone = "Invalid/Timezone";
+
+      // When & Then
+      assertThatThrownBy(() -> DateUtils.parseFlexibleDate(dateStr, invalidTimezone))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Invalid timezone");
+    }
+
+    @Test
+    @DisplayName("Should parse legacy format with timezone")
+    void shouldParseLegacyFormatWithTimezone() {
+      // Given
+      String legacyDateStr = "15-01-2024";
+      String timezone = "America/Chicago";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDate(legacyDateStr, timezone);
+
+      // Then
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-15T06:00:00Z");
+    }
+
+    @Test
+    @DisplayName("Should return null for null date string with timezone")
+    void shouldReturnNullForNullDateStringWithTimezone() {
+      // When
+      Instant result = DateUtils.parseFlexibleDate(null, "America/Chicago");
+
+      // Then
+      assertThat(result).isNull();
+    }
+
+    @Test
+    @DisplayName("Should handle daylight saving time correctly")
+    void shouldHandleDaylightSavingTime() {
+      // Given - March 10, 2024 is during DST in Chicago (UTC-5)
+      String dateStr = "2024-03-10";
+      String timezone = "America/Chicago";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDate(dateStr, timezone);
+
+      // Then - Before DST starts (2 AM on March 10), so still UTC-6
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-03-10T06:00:00Z");
+    }
+  }
+
+  @Nested
+  @DisplayName("Timezone-Aware End of Day - parseFlexibleDateEndOfDay(String, String)")
+  class TimezoneAwareEndOfDayTests {
+
+    @Test
+    @DisplayName("Should parse date to end of day with America/Chicago timezone")
+    void shouldParseDateToEndOfDayWithChicagoTimezone() {
+      // Given
+      String dateStr = "2024-01-15";
+      String timezone = "America/Chicago";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDateEndOfDay(dateStr, timezone);
+
+      // Then - End of day in Chicago (23:59:59.999999999) is next day 05:59:59.999999999 UTC
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).startsWith("2024-01-16T05:59:59.999999999Z");
+    }
+
+    @Test
+    @DisplayName("Should parse date to end of day with Asia/Tokyo timezone")
+    void shouldParseDateToEndOfDayWithTokyoTimezone() {
+      // Given
+      String dateStr = "2024-01-15";
+      String timezone = "Asia/Tokyo";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDateEndOfDay(dateStr, timezone);
+
+      // Then - End of day in Tokyo is earlier in UTC (same day 14:59:59)
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).startsWith("2024-01-15T14:59:59.999999999Z");
+    }
+
+    @Test
+    @DisplayName("Should preserve time when datetime with T provided")
+    void shouldPreserveTimeWhenDateTimeWithTProvided() {
+      // Given
+      String dateTimeStr = "2024-01-15T10:30:00";
+      String timezone = "America/Chicago";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDateEndOfDay(dateTimeStr, timezone);
+
+      // Then - Should parse as datetime (not end of day)
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-15T16:30:00Z");
+    }
+
+    @Test
+    @DisplayName("Should ignore timezone when instant with Z provided")
+    void shouldIgnoreTimezoneWhenInstantWithZProvided() {
+      // Given
+      String instantStr = "2024-01-15T10:30:00Z";
+      String timezone = "America/Chicago";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDateEndOfDay(instantStr, timezone);
+
+      // Then
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).isEqualTo("2024-01-15T10:30:00Z");
+    }
+
+    @Test
+    @DisplayName("Should default to UTC when timezone is null")
+    void shouldDefaultToUtcWhenTimezoneIsNull() {
+      // Given
+      String dateStr = "2024-01-15";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDateEndOfDay(dateStr, null);
+
+      // Then
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).startsWith("2024-01-15T23:59:59.999999999Z");
+    }
+
+    @Test
+    @DisplayName("Should default to UTC when timezone is blank")
+    void shouldDefaultToUtcWhenTimezoneIsBlank() {
+      // Given
+      String dateStr = "2024-01-15";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDateEndOfDay(dateStr, "   ");
+
+      // Then
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).startsWith("2024-01-15T23:59:59.999999999Z");
+    }
+
+    @Test
+    @DisplayName("Should throw exception for invalid timezone")
+    void shouldThrowExceptionForInvalidTimezone() {
+      // Given
+      String dateStr = "2024-01-15";
+      String invalidTimezone = "Invalid/Timezone";
+
+      // When & Then
+      assertThatThrownBy(() -> DateUtils.parseFlexibleDateEndOfDay(dateStr, invalidTimezone))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("Invalid timezone");
+    }
+
+    @Test
+    @DisplayName("Should return null for null date string with timezone")
+    void shouldReturnNullForNullDateStringWithTimezone() {
+      // When
+      Instant result = DateUtils.parseFlexibleDateEndOfDay(null, "America/Chicago");
+
+      // Then
+      assertThat(result).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse legacy format to end of day with timezone")
+    void shouldParseLegacyFormatToEndOfDayWithTimezone() {
+      // Given
+      String legacyDateStr = "15-01-2024";
+      String timezone = "America/Chicago";
+
+      // When
+      Instant result = DateUtils.parseFlexibleDateEndOfDay(legacyDateStr, timezone);
+
+      // Then
+      assertThat(result).isNotNull();
+      assertThat(result.toString()).startsWith("2024-01-16T05:59:59.999999999Z");
+    }
+  }
 }
