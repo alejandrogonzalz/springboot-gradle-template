@@ -1,0 +1,11 @@
+CREATE TABLE current_exchange_rate (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    series_id VARCHAR(20) NOT NULL UNIQUE,
+    rate_date DATE NOT NULL,
+    rate_value DECIMAL(10,4) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_by VARCHAR(255),
+    version BIGINT DEFAULT 0
+);

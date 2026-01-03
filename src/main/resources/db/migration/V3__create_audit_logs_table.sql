@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     username VARCHAR(50) NOT NULL,
     operation VARCHAR(50) NOT NULL,
     entity_type VARCHAR(100) NOT NULL,
-    entity_id BIGINT NOT NULL,
+    entity_id BIGINT NULL,
     description VARCHAR(500) NULL,
     ip_address VARCHAR(45) NULL,
     request_uri VARCHAR(255) NULL,

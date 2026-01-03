@@ -132,3 +132,13 @@ audit:
     # "0 0 2 1 * ?" - Monthly (1st day at 2 AM)
     # "0 0 2 * * ?" - Daily (every day at 2 AM)
     # "0 0 2 ? * SUN" - Weekly (every Sunday at 2 AM)
+
+# External API Configuration
+external:
+  api:
+    banxico:
+      base-url: https://www.banxico.org.mx/SieAPIRest/service/v1
+      token: ${BANXICO_TOKEN:4e10fc54afd135a76143ec83429017394ff9d4b2226d875f5594f892149c50c4}
+  scheduler:
+    exchange-rate:
+      cron: "0 0 8 * * MON-FRI"

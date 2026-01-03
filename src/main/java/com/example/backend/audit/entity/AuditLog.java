@@ -43,8 +43,8 @@ public class AuditLog extends BaseEntity {
   @Column(name = "entity_type", nullable = false, length = 100)
   private String entityType;
 
-  /** ID of the affected entity */
-  @Column(name = "entity_id", nullable = false)
+  /** ID of the affected entity (nullable for operations without specific entity) */
+  @Column(name = "entity_id")
   private Long entityId;
 
   /** Human-readable description of the action */
