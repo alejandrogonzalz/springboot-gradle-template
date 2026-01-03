@@ -65,7 +65,7 @@ public class UserController {
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
-    log.debug("GET /api/v1/users - Request: {}", request);
+    log.debug("GET /api/v1/users - Request: {}\nPageable: {}", request, pageable.toString());
     UserFilter filter = userMapper.toFilter(request);
     Page<UserDto> users = userService.getAllUsers(filter, pageable);
     return ResponseEntity.ok(BaseResponse.success(users, "Users retrieved successfully"));
@@ -80,11 +80,13 @@ public class UserController {
               + "Accepts same filters as GET /users but returns complete List instead of Page.")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<BaseResponse<List<UserDto>>> getAllUsersUnpaginated(
-      @RequestBody UserFilterRequest request) {
+      @RequestBody UserFilterRequest request,
+      @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
 
-    log.debug("POST /api/v1/users/all - Request: {}", request);
+    log.debug("POST /api/v1/users/all - Request: {}\nPageable: {}", request, pageable.toString());
     UserFilter filter = userMapper.toFilter(request);
-    List<UserDto> users = userService.getAllUsersUnpaginated(filter);
+    List<UserDto> users = userService.getAllUsersUnpaginated(filter, pageable);
     return ResponseEntity.ok(
         BaseResponse.success(users, users.size() + " users retrieved successfully"));
   }

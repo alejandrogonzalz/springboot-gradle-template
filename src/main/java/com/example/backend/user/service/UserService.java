@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -147,10 +148,11 @@ public class UserService implements UserDetailsService {
    * @param filter user filter criteria
    * @return List of all UserDto matching the filter
    */
-  public List<UserDto> getAllUsersUnpaginated(UserFilter filter) {
+  public List<UserDto> getAllUsersUnpaginated(UserFilter filter, Pageable pageable) {
     log.debug("Fetching ALL users (unpaginated) with filter: {}", filter);
+    Sort sort = pageable.getSort();
     Specification<User> spec = buildUserSpecification(filter);
-    return userRepository.findAll(spec).stream().map(userMapper::toDto).toList();
+    return userRepository.findAll(spec, sort).stream().map(userMapper::toDto).toList();
   }
 
   /**

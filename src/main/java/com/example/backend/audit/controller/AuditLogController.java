@@ -9,6 +9,7 @@ import com.example.backend.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
@@ -64,14 +65,14 @@ public class AuditLogController {
       summary = "Search audit logs (POST)",
       description =
           "Filter audit logs using a JSON request body. Useful for complex filters or exporting.")
-  public ResponseEntity<BaseResponse<Page<AuditLogDto>>> searchAuditLogs(
+  public ResponseEntity<BaseResponse<List<AuditLogDto>>> getAllAuditLogsUnpaginated(
       @RequestBody AuditLogFilterRequest request,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
     log.debug("POST /api/v1/audit-logs/all - Request: {}", request);
     AuditLogFilter filter = auditLogMapper.toFilter(request);
-    Page<AuditLogDto> auditLogs = auditLogService.getAllAuditLogs(filter, pageable);
+    List<AuditLogDto> auditLogs = auditLogService.getAllAuditLogsUnpaginated(filter, pageable);
     return ResponseEntity.ok(BaseResponse.success(auditLogs, "Audit logs retrieved successfully"));
   }
 }

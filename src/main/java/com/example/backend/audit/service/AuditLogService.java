@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,10 +51,11 @@ public class AuditLogService {
    * @param filter user filter criteria
    * @return List of all UserDto matching the filter
    */
-  public List<AuditLogDto> getAllAuditLogsUnpaginated(AuditLogFilter filter) {
+  public List<AuditLogDto> getAllAuditLogsUnpaginated(AuditLogFilter filter, Pageable pageable) {
     log.debug("Fetching ALL audit logs (unpaginated) with filters: {}", filter);
+    Sort sort = pageable.getSort();
     Specification<AuditLog> spec = buildAuditLogSpecification(filter);
-    return auditLogRepository.findAll(spec).stream().map(auditLogMapper::toDto).toList();
+    return auditLogRepository.findAll(spec, sort).stream().map(auditLogMapper::toDto).toList();
   }
 
   /**
