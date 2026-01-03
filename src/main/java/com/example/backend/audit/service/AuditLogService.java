@@ -6,6 +6,7 @@ import com.example.backend.audit.entity.AuditLog;
 import com.example.backend.audit.mapper.AuditLogMapper;
 import com.example.backend.audit.repository.AuditLogRepository;
 import com.example.backend.common.specification.SpecificationBuilder;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -40,6 +41,19 @@ public class AuditLogService {
     log.debug("Fetching audit logs with filter: {}", filter);
     Specification<AuditLog> spec = buildAuditLogSpecification(filter);
     return auditLogRepository.findAll(spec, pageable).map(auditLogMapper::toDto);
+  }
+
+  /**
+   * Gets all audit logs without pagination - returns ALL records matching filter. Use with caution
+   * for large datasets.
+   *
+   * @param filter user filter criteria
+   * @return List of all UserDto matching the filter
+   */
+  public List<AuditLogDto> getAllAuditLogsUnpaginated(AuditLogFilter filter) {
+    log.debug("Fetching ALL audit logs (unpaginated) with filters: {}", filter);
+    Specification<AuditLog> spec = buildAuditLogSpecification(filter);
+    return auditLogRepository.findAll(spec).stream().map(auditLogMapper::toDto).toList();
   }
 
   /**

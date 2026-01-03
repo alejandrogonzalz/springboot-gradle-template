@@ -1,14 +1,21 @@
 package com.example.backend.user.mapper;
 
+import com.example.backend.common.utils.DateMappingUtils;
 import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
+import com.example.backend.user.dto.UserFilter;
+import com.example.backend.user.dto.UserFilterRequest;
 import com.example.backend.user.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-/** MapStruct mapper for User entity and DTOs. */
-@Mapper(componentModel = "spring")
-public interface UserMapper {
+/**
+ * MapStruct mapper for User entity and DTOs. 1. Methods fpr MapStruct (Must be 'abstract') These do
+ * NOT have { body } because MapStruct generates the code. 2. Helper methods (Must have { body })
+ * These do NOT have 'abstract' because YOU are providing the logic.
+ */
+@Mapper(componentModel = "spring", uses = DateMappingUtils.class)
+public abstract class UserMapper {
 
   /**
    * Converts User entity to UserDto.
@@ -17,7 +24,7 @@ public interface UserMapper {
    * @return UserDto
    */
   @Mapping(target = "permissions", source = "additionalPermissions")
-  UserDto toDto(User user);
+  public abstract UserDto toDto(User user);
 
   /**
    * Converts CreateUserRequest to User entity. Password will be set separately after hashing.
@@ -38,5 +45,18 @@ public interface UserMapper {
   @Mapping(target = "isActive", constant = "true")
   @Mapping(target = "role", ignore = true)
   @Mapping(target = "additionalPermissions", ignore = true)
-  User toEntity(CreateUserRequest request);
+  public abstract User toEntity(CreateUserRequest request);
+
+  @Mapping(target = "createdAtFrom", source = "createdAtFrom", qualifiedByName = "toStartOfDay")
+  @Mapping(target = "createdAtTo", source = "createdAtTo", qualifiedByName = "toEndOfDay")
+  @Mapping(target = "updatedAtFrom", source = "updatedAtFrom", qualifiedByName = "toStartOfDay")
+  @Mapping(target = "updatedAtTo", source = "updatedAtTo", qualifiedByName = "toEndOfDay")
+  @Mapping(
+      target = "lastLoginDateFrom",
+      source = "lastLoginDateFrom",
+      qualifiedByName = "toStartOfDay")
+  @Mapping(target = "lastLoginDateTo", source = "lastLoginDateTo", qualifiedByName = "toEndOfDay")
+  @Mapping(target = "deletedAtFrom", source = "deletedAtFrom", qualifiedByName = "toStartOfDay")
+  @Mapping(target = "deletedAtTo", source = "deletedAtTo", qualifiedByName = "toEndOfDay")
+  public abstract UserFilter toFilter(UserFilterRequest request);
 }

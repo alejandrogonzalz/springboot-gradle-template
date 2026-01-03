@@ -1,25 +1,22 @@
 package com.example.backend.user.controller;
 
 import com.example.backend.common.BaseResponse;
-import com.example.backend.common.utils.DateUtils;
 import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UpdateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
+import com.example.backend.user.dto.UserFilterRequest;
 import com.example.backend.user.dto.UserStatisticsDto;
-import com.example.backend.user.entity.Permission;
 import com.example.backend.user.entity.User;
-import com.example.backend.user.entity.UserRole;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -61,116 +58,15 @@ public class UserController {
   }
 
   @GetMapping
-  @Operation(
-      summary = "Get all users",
-      description =
-          "Retrieves all users with optional filtering and pagination. "
-              + "Supports filtering by: username (contains), email (contains), phone (contains), roles (in list), active status (in list), "
-              + "and date ranges (createdAt, updatedAt, lastLoginDate, deletedAt) in ISO-8601 format. "
-              + "Example: /api/v1/users?roles=ADMIN,USER&isActive=true&phone=+1234&createdAtFrom=2024-01-01&createdAtTo=2024-01-01T23:59:59")
+  @Operation(summary = "Get all users", description = "Filter users using query parameters.")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<BaseResponse<Page<UserDto>>> getAllUsers(
-      @Parameter(description = "Filter by user ID from (inclusive)", example = "1")
-          @RequestParam(required = false)
-          Long idFrom,
-      @Parameter(description = "Filter by user ID to (inclusive)", example = "100")
-          @RequestParam(required = false)
-          Long idTo,
-      @Parameter(description = "Filter by username (contains)") @RequestParam(required = false)
-          String username,
-      @Parameter(description = "Filter by first name (contains)") @RequestParam(required = false)
-          String firstName,
-      @Parameter(description = "Filter by last name (contains)") @RequestParam(required = false)
-          String lastName,
-      @Parameter(description = "Filter by email (contains)") @RequestParam(required = false)
-          String email,
-      @Parameter(description = "Filter by phone (contains)") @RequestParam(required = false)
-          String phone,
-      @Parameter(description = "Filter by roles (e.g., ADMIN,USER)") @RequestParam(required = false)
-          List<UserRole> roles,
-      @Parameter(description = "Filter by permissions (e.g., READ,CREATE)")
-          @RequestParam(required = false)
-          List<Permission> permissions,
-      @Parameter(description = "Filter by active status (e.g., true,false)")
-          @RequestParam(required = false)
-          Boolean isActive,
-      @Parameter(
-              description = "Created date from (ISO-8601: yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss)",
-              example = "2024-01-01")
-          @RequestParam(required = false)
-          String createdAtFrom,
-      @Parameter(
-              description = "Created date to (ISO-8601: yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss)",
-              example = "2024-12-31")
-          @RequestParam(required = false)
-          String createdAtTo,
-      @Parameter(description = "Updated date from (ISO-8601)", example = "2024-01-01")
-          @RequestParam(required = false)
-          String updatedAtFrom,
-      @Parameter(description = "Updated date to (ISO-8601)", example = "2024-12-31")
-          @RequestParam(required = false)
-          String updatedAtTo,
-      @Parameter(description = "Last login date from (ISO-8601)", example = "2024-01-01")
-          @RequestParam(required = false)
-          String lastLoginDateFrom,
-      @Parameter(description = "Last login date to (ISO-8601)", example = "2024-12-31")
-          @RequestParam(required = false)
-          String lastLoginDateTo,
-      @Parameter(description = "Filter by created by user") @RequestParam(required = false)
-          String createdBy,
-      @Parameter(description = "Filter by updated by user") @RequestParam(required = false)
-          String updatedBy,
-      @Parameter(description = "Filter by deleted by user") @RequestParam(required = false)
-          String deletedBy,
-      @Parameter(description = "Deleted date from (ISO-8601)", example = "2024-01-01")
-          @RequestParam(required = false)
-          String deletedAtFrom,
-      @Parameter(description = "Deleted date to (ISO-8601)", example = "2024-12-31")
-          @RequestParam(required = false)
-          String deletedAtTo,
-      @Parameter(hidden = true) @RequestHeader(value = "X-Timezone", required = false)
-          String timezone,
+      @ParameterObject UserFilterRequest request,
       @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
-    // Parse date strings to Instant
-    Instant createdAtFromInstant = DateUtils.parseFlexibleDate(createdAtFrom, timezone);
-    Instant createdAtToInstant = DateUtils.parseFlexibleDateEndOfDay(createdAtTo, timezone);
-    Instant updatedAtFromInstant = DateUtils.parseFlexibleDate(updatedAtFrom, timezone);
-    Instant updatedAtToInstant = DateUtils.parseFlexibleDateEndOfDay(updatedAtTo, timezone);
-    Instant lastLoginDateFromInstant = DateUtils.parseFlexibleDate(lastLoginDateFrom, timezone);
-    Instant lastLoginDateToInstant = DateUtils.parseFlexibleDateEndOfDay(lastLoginDateTo, timezone);
-    Instant deletedAtFromInstant = DateUtils.parseFlexibleDate(deletedAtFrom, timezone);
-    Instant deletedAtToInstant = DateUtils.parseFlexibleDateEndOfDay(deletedAtTo, timezone);
-
-    // Build filter object
-    UserFilter filter =
-        UserFilter.builder()
-            .idFrom(idFrom)
-            .idTo(idTo)
-            .username(username)
-            .firstName(firstName)
-            .lastName(lastName)
-            .email(email)
-            .phone(phone)
-            .roles(roles)
-            .permissions(permissions)
-            .isActive(isActive)
-            .createdBy(createdBy)
-            .updatedBy(updatedBy)
-            .deletedBy(deletedBy)
-            .createdAtFrom(createdAtFromInstant)
-            .createdAtTo(createdAtToInstant)
-            .updatedAtFrom(updatedAtFromInstant)
-            .updatedAtTo(updatedAtToInstant)
-            .lastLoginDateFrom(lastLoginDateFromInstant)
-            .lastLoginDateTo(lastLoginDateToInstant)
-            .deletedAtFrom(deletedAtFromInstant)
-            .deletedAtTo(deletedAtToInstant)
-            .build();
-
-    log.debug("GET /api/v1/users - Filter: {}", filter);
-
+    log.debug("GET /api/v1/users - Request: {}", request);
+    UserFilter filter = userMapper.toFilter(request);
     Page<UserDto> users = userService.getAllUsers(filter, pageable);
     return ResponseEntity.ok(BaseResponse.success(users, "Users retrieved successfully"));
   }
@@ -184,10 +80,10 @@ public class UserController {
               + "Accepts same filters as GET /users but returns complete List instead of Page.")
   @PreAuthorize("hasAuthority('PERMISSION_READ')")
   public ResponseEntity<BaseResponse<List<UserDto>>> getAllUsersUnpaginated(
-      @RequestBody UserFilter filter) {
+      @RequestBody UserFilterRequest request) {
 
-    log.debug("POST /api/v1/users/all - Filter: {}", filter);
-
+    log.debug("POST /api/v1/users/all - Request: {}", request);
+    UserFilter filter = userMapper.toFilter(request);
     List<UserDto> users = userService.getAllUsersUnpaginated(filter);
     return ResponseEntity.ok(
         BaseResponse.success(users, users.size() + " users retrieved successfully"));
