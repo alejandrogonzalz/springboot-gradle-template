@@ -1,12 +1,15 @@
 package com.example.backend.audit.controller;
 
+import com.example.backend.audit.dto.AuditDashboardStatsDto;
 import com.example.backend.audit.dto.AuditLogDto;
 import com.example.backend.audit.dto.AuditLogFilter;
 import com.example.backend.audit.dto.AuditLogFilterRequest;
+import com.example.backend.audit.dto.DashboardRange;
 import com.example.backend.audit.mapper.AuditLogMapper;
 import com.example.backend.audit.service.AuditLogService;
 import com.example.backend.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -74,5 +78,21 @@ public class AuditLogController {
     AuditLogFilter filter = auditLogMapper.toFilter(request);
     List<AuditLogDto> auditLogs = auditLogService.getAllAuditLogsUnpaginated(filter, pageable);
     return ResponseEntity.ok(BaseResponse.success(auditLogs, "Audit logs retrieved successfully"));
+  }
+
+  @GetMapping("/dashboard")
+  @Operation(
+      summary = "Get Audit Dashboard Statistics",
+      description =
+          "Retrieves aggregated metrics (timeline, operations, top users) for the specified time range. "
+              + "Defaults to LAST_7_DAYS if not provided. Optimized for chart visualization.")
+  public ResponseEntity<BaseResponse<AuditDashboardStatsDto>> getDashboardStats(
+      @Parameter(description = "Time range for dashboard statistics", example = "LAST_7_DAYS")
+          @RequestParam(required = false, defaultValue = "LAST_7_DAYS")
+          DashboardRange range) {
+
+    log.debug("GET /api/v1/audit-logs/dashboard - range: {}", range);
+    AuditDashboardStatsDto response = auditLogService.getDashboardStatistics(range);
+    return ResponseEntity.ok(BaseResponse.success(response, "Dashboard created succesfully"));
   }
 }

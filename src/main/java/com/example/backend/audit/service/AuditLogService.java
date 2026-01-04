@@ -1,11 +1,14 @@
 package com.example.backend.audit.service;
 
+import com.example.backend.audit.dto.AuditDashboardStatsDto;
 import com.example.backend.audit.dto.AuditLogDto;
 import com.example.backend.audit.dto.AuditLogFilter;
+import com.example.backend.audit.dto.DashboardRange;
 import com.example.backend.audit.entity.AuditLog;
 import com.example.backend.audit.mapper.AuditLogMapper;
 import com.example.backend.audit.repository.AuditLogRepository;
 import com.example.backend.common.specification.SpecificationBuilder;
+import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -77,6 +80,37 @@ public class AuditLogService {
         .in("username", filter.getUsernames())
         .in("operation", filter.getOperations())
         .in("entityType", filter.getEntityTypes())
+        .build();
+  }
+
+  /**
+   * Gets dashboard statistics for the specified time range.
+   *
+   * @param range time range for statistics (defaults to LAST_7_DAYS if null)
+   * @return aggregated dashboard statistics
+   */
+  @Transactional(readOnly = true)
+  public AuditDashboardStatsDto getDashboardStatistics(DashboardRange range) {
+    // Default to LAST_7_DAYS if null
+    if (range == null) {
+      range = DashboardRange.LAST_7_DAYS;
+    }
+
+    Instant since = range.getStartInstant();
+
+    log.debug("Fetching dashboard statistics for range {} (since {})", range, since);
+
+    return AuditDashboardStatsDto.builder()
+        .logsOverTime(
+            auditLogMapper.toChartPointDtoList(auditLogRepository.countLogsByDayNative(since)))
+        .logsByOperation(
+            auditLogMapper.toChartPointDtoList(
+                auditLogRepository.countLogsByOperationNative(since)))
+        .logsByUser(
+            auditLogMapper.toChartPointDtoList(
+                auditLogRepository.findTopActiveUsersNative(since, 5)))
+        .logsByStatus(
+            auditLogMapper.toChartPointDtoList(auditLogRepository.countLogsByStatusNative(since)))
         .build();
   }
 }
