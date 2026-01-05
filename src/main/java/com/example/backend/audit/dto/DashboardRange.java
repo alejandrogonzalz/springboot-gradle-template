@@ -1,6 +1,8 @@
 package com.example.backend.audit.dto;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 
 /** Predefined time ranges for dashboard statistics. */
@@ -19,12 +21,12 @@ public enum DashboardRange {
   }
 
   /**
-   * Calculates the start instant for this range.
-   *
-   * @return Instant representing the start of the range
+   * Calculates the start instant for this range. Uses ZonedDateTime to support calendar units like
+   * Months and Years.
    */
   public Instant getStartInstant() {
-    return Instant.now().minus(amount, unit);
+    // Convert to ZonedDateTime (UTC) to perform calendar math safely
+    return ZonedDateTime.now(ZoneOffset.UTC).minus(amount, unit).toInstant();
   }
 
   /**
