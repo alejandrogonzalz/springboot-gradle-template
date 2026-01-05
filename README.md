@@ -4,7 +4,7 @@ A production-ready Spring Boot backend application template demonstrating best p
 
 ## 🚀 Features
 
-- **Spring Boot 3.2.0** with Java 17
+- **Spring Boot 3.2.0** with Java 21
 - **Gradle Kotlin DSL** for build configuration
 - **MySQL 8.0** database with HikariCP connection pooling
 - **Flyway** for database migrations
@@ -22,7 +22,7 @@ A production-ready Spring Boot backend application template demonstrating best p
 
 ## 📋 Prerequisites
 
-- JDK 17 or higher
+- JDK 21
 - Docker and Docker Compose
 - Gradle 8.x (wrapper included)
 
