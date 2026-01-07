@@ -160,20 +160,63 @@ The provided `docker-compose.yml` includes:
 - Health checks
 - Persistent volumes
 
-## 📊 Monitoring & Observability
-
-### Actuator Endpoints
-
-- `/actuator/health` - Health status
-- `/actuator/info` - Application info
-- `/actuator/metrics` - Application metrics
-- `/actuator/prometheus` - Prometheus metrics
-
-### Logging
-
-Logs are written to:
-- Console (human-readable format)
-- `logs/application.log` (rolling file)
-- `logs/application-json.log` (JSON format for log aggregation)
-
 ---
+
+## IntelliJ IDEA Setup Guide
+
+### 1. Project Structure
+
+First, configure the project SDK. Open the **Project Structure** menu (**Ctrl + Alt + Shift + S** on Windows) and set the SDK to **Amazon Corretto 21.0.9**.
+
+![IntelliJ Project Structure.png](docs/intellij-project-structure.png)
+
+### 2. Gradle Settings
+
+Navigate to **Settings** (**Ctrl + Alt + S** on Windows) and configure the following under **Build, Execution, Deployment > Build Tools > Gradle**:
+
+* **Build and run using:** IntelliJ IDEA
+* **Run tests using:** IntelliJ IDEA
+* **Distribution:** Wrapper
+* **Gradle JVM:** Project SDK (Amazon Corretto 21.0.9)
+
+![IntelliJ Settings.png](docs/intellij-settings.png)
+
+### 3. Run Configurations
+
+There are two ways to configure the application for local execution:
+
+#### Option A: Spring Boot Configuration (Ultimate Edition)
+
+This is the preferred method if you are using IntelliJ IDEA Ultimate. Click **Edit Configurations...** at the top of the IDE, create a new **Spring Boot** configuration, and apply these settings:
+
+* **Name:** BackendApplication
+* **Build and run:** Java 21 -> `com.example.backend.BackendApplication`
+* **Active profiles:** `local`
+* **Before launch (Add tasks in order):**
+1. Build
+2. Run Gradle task: `backend-application:spotlessApply`
+3. Run Gradle task: `backend-application:test`
+
+![IntelliJ Springboot Run](docs/intellij-springboot-run.png)
+
+> **Note:** To add pre-launch tasks, click the **+** icon in the "Before launch" section.
+
+![IntelliJ Springboot Run - Add new task.png](docs/intellij-springboot-run-add-new-task.png)
+
+#### Option B: Application Configuration (Community/Free Edition)
+
+![IntelliJ Add New Configuration.png](docs/intellij-application-add-new-config.png)
+
+If you are using the Community Edition, use the standard **Application** configuration:
+
+1. Click **Add New Configuration** and select **Application**.
+2. Set **Main class** to `com.example.backend.BackendApplication`.
+3. Set **Program arguments** to:
+   `./gradlew bootRun --args='--spring.profiles.active=local'`
+4. Set **Working directory** to your project root (e.g., `C:\projects\springboot-gradle-template`).
+5. **Before launch (Add tasks in order):**
+1. Build
+2. Run Gradle task: `backend-application:spotlessApply`
+3. Run Gradle task: `backend-application:test`
+
+![IntelliJ Application Run](docs/intellij-application-run.png)

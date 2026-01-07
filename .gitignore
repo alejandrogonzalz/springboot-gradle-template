@@ -45,6 +45,7 @@ logs/
 
 ### Database ###
 *.db
+.run
 
 ### Gradle ###
 daemon/
