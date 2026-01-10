@@ -1,12 +1,7 @@
 package com.example.backend.user.controller;
 
 import com.example.backend.common.BaseResponse;
-import com.example.backend.user.dto.CreateUserRequest;
-import com.example.backend.user.dto.UpdateUserRequest;
-import com.example.backend.user.dto.UserDto;
-import com.example.backend.user.dto.UserFilter;
-import com.example.backend.user.dto.UserFilterRequest;
-import com.example.backend.user.dto.UserStatisticsDto;
+import com.example.backend.user.dto.*;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.service.UserService;
@@ -89,6 +84,20 @@ public class UserController {
     List<UserDto> users = userService.getAllUsersUnpaginated(filter, pageable);
     return ResponseEntity.ok(
         BaseResponse.success(users, users.size() + " users retrieved successfully"));
+  }
+
+  @GetMapping("/suggestions")
+  @Operation(
+      summary = "Get user suggestions for multiselect components",
+      description =
+          "Retrieves a lightweight list of users matching the search term for use in UI elements like search bars and multiselect components.")
+  @PreAuthorize("hasAuthority('PERMISSION_READ')")
+  public ResponseEntity<BaseResponse<List<UserSuggestionDto>>> getUserSuggestions(
+      @RequestParam String searchTerm, @RequestParam(defaultValue = "10") int limit) {
+    log.debug("GET /api/v1/users/suggestions - searchTerm: {}, limit: {}", searchTerm, limit);
+    List<UserSuggestionDto> suggestions = userService.getUserSuggestions(searchTerm, limit);
+    return ResponseEntity.ok(
+        BaseResponse.success(suggestions, "Suggestions retrieved successfully"));
   }
 
   @GetMapping("/statistics")

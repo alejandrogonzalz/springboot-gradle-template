@@ -68,7 +68,6 @@ public class AuditLogService {
    */
   private Specification<AuditLog> buildAuditLogSpecification(AuditLogFilter filter) {
     return SpecificationBuilder.<AuditLog>builder()
-        .contains("username", filter.getUsername())
         .contains("operation", filter.getOperation())
         .contains("entityType", filter.getEntityType())
         .equals("entityId", filter.getEntityId())
@@ -77,7 +76,7 @@ public class AuditLogService {
         .in("httpMethod", filter.getHttpMethods())
         .in("success", filter.getSuccess())
         .between("createdAt", filter.getCreatedAtFrom(), filter.getCreatedAtTo())
-        .in("username", filter.getUsernames())
+        .in("username", filter.getUsername())
         .in("operation", filter.getOperations())
         .in("entityType", filter.getEntityTypes())
         .build();

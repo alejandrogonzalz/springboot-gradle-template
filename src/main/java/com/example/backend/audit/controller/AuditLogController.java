@@ -81,6 +81,7 @@ public class AuditLogController {
   }
 
   @GetMapping("/dashboard")
+  @PreAuthorize("hasRole('ADMIN') or hasAuthority('VIEW_AUDIT_LOGS')")
   @Operation(
       summary = "Get Audit Dashboard Statistics",
       description =

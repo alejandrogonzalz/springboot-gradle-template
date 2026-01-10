@@ -2,6 +2,8 @@ package com.example.backend.user.repository;
 
 import com.example.backend.user.entity.User;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -60,4 +62,17 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
   @Query("SELECT u.role as role, COUNT(u) as count FROM User u GROUP BY u.role")
   @SuppressWarnings("java:S1214")
   java.util.List<Object[]> countUsersByRole();
+
+  /**
+   * Finds users where username or email contains the search term.
+   *
+   * @param searchTerm the term to search for
+   * @param pageable the pagination information
+   * @return a Page of matching users
+   */
+  @Query(
+      "SELECT u FROM User u WHERE "
+          + "LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) "
+          + "ORDER BY u.username ASC")
+  Page<User> findUserSuggestions(@Param("searchTerm") String searchTerm, Pageable pageable);
 }

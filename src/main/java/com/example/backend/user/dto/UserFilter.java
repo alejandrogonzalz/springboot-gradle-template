@@ -20,7 +20,7 @@ public class UserFilter {
 
   private Long idFrom;
   private Long idTo;
-  private String username;
+  private List<String> username;
   private String firstName;
   private String lastName;
   private String email;
@@ -28,9 +28,9 @@ public class UserFilter {
   private List<Permission> permissions;
   private Boolean isActive;
   private String phone;
-  private String createdBy;
-  private String updatedBy;
-  private String deletedBy;
+  private List<String> createdBy;
+  private List<String> updatedBy;
+  private List<String> deletedBy;
   private Instant deletedAtFrom;
   private Instant deletedAtTo;
   private Instant createdAtFrom;

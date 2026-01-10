@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Audit log filter criteria")
 public class AuditLogFilter {
 
-  private String username;
   private String operation;
   private String entityType;
   private Long entityId;
@@ -23,7 +22,7 @@ public class AuditLogFilter {
   private String requestUri;
   private List<String> httpMethods;
   private List<Boolean> success;
-  private List<String> usernames;
+  private List<String> username;
   private List<String> operations;
   private List<String> entityTypes;
 

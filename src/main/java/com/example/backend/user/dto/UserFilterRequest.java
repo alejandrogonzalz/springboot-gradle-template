@@ -24,7 +24,7 @@ public class UserFilterRequest {
   private Long idTo;
 
   @Schema(description = "Filter by username (contains)", example = "john")
-  private String username;
+  private List<String> username;
 
   @Schema(description = "Filter by first name (contains)", example = "John")
   private String firstName;
@@ -63,13 +63,13 @@ public class UserFilterRequest {
   private String lastLoginDateTo;
 
   @Schema(description = "Filter by created by user", example = "admin")
-  private String createdBy;
+  private List<String> createdBy;
 
   @Schema(description = "Filter by updated by user", example = "admin")
-  private String updatedBy;
+  private List<String> updatedBy;
 
   @Schema(description = "Filter by deleted by user", example = "admin")
-  private String deletedBy;
+  private List<String> deletedBy;
 
   @Schema(description = "Deleted date from", example = "2024-01-01T00:00:00Z or 2024-01-01")
   private String deletedAtFrom;

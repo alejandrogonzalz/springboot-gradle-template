@@ -15,9 +15,6 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Audit log search request parameters")
 public class AuditLogFilterRequest {
 
-  @Schema(description = "Filter by username (partial match)", example = "admin")
-  private String username;
-
   @Schema(
       description = "Filter by operation type (e.g., CREATE_USER, LOGIN)",
       example = "UPDATE_USER")
@@ -42,7 +39,7 @@ public class AuditLogFilterRequest {
   private List<Boolean> success;
 
   @Schema(description = "Filter by multiple usernames", example = "[\"manager1\", \"clerk2\"]")
-  private List<String> usernames;
+  private List<String> username;
 
   @Schema(description = "Filter by multiple operation types", example = "[\"CREATE\", \"DELETE\"]")
   private List<String> operations;

@@ -6,11 +6,7 @@ import com.example.backend.common.utils.PhoneValidator;
 import com.example.backend.common.utils.TestUtils;
 import com.example.backend.exception.DuplicateResourceException;
 import com.example.backend.exception.ResourceNotFoundException;
-import com.example.backend.user.dto.CreateUserRequest;
-import com.example.backend.user.dto.UpdateUserRequest;
-import com.example.backend.user.dto.UserDto;
-import com.example.backend.user.dto.UserFilter;
-import com.example.backend.user.dto.UserStatisticsDto;
+import com.example.backend.user.dto.*;
 import com.example.backend.user.entity.User;
 import com.example.backend.user.mapper.UserMapper;
 import com.example.backend.user.repository.UserRepository;
@@ -20,6 +16,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -156,6 +153,21 @@ public class UserService implements UserDetailsService {
   }
 
   /**
+   * Gets user suggestions for comboboxes.
+   *
+   * @param searchTerm the term to search for
+   * @param limit the maximum number of results to return
+   * @return a list of UserSuggestionDto
+   */
+  public List<UserSuggestionDto> getUserSuggestions(String searchTerm, int limit) {
+    log.debug("Fetching user suggestions with searchTerm: {} and limit: {}", searchTerm, limit);
+    Pageable pageable = PageRequest.of(0, limit);
+    return userRepository.findUserSuggestions(searchTerm, pageable).stream()
+        .map(userMapper::toSuggestionDto)
+        .toList();
+  }
+
+  /**
    * Builds a Specification for User filtering using the fluent builder pattern.
    *
    * <p>Eliminates boilerplate code by using {@link SpecificationBuilder} instead of manual
@@ -186,7 +198,7 @@ public class UserService implements UserDetailsService {
     // Apply all other filters using fluent builder
     return builder
         .between("id", filter.getIdFrom(), filter.getIdTo())
-        .contains("username", filter.getUsername())
+        .in("username", filter.getUsername())
         .contains("firstName", filter.getFirstName())
         .contains("lastName", filter.getLastName())
         .contains("email", filter.getEmail())
@@ -196,9 +208,9 @@ public class UserService implements UserDetailsService {
         .between("createdAt", filter.getCreatedAtFrom(), filter.getCreatedAtTo())
         .between("updatedAt", filter.getUpdatedAtFrom(), filter.getUpdatedAtTo())
         .between("lastLoginDate", filter.getLastLoginDateFrom(), filter.getLastLoginDateTo())
-        .contains("createdBy", filter.getCreatedBy())
-        .contains("updatedBy", filter.getUpdatedBy())
-        .contains("deletedBy", filter.getDeletedBy())
+        .in("createdBy", filter.getCreatedBy())
+        .in("updatedBy", filter.getUpdatedBy())
+        .in("deletedBy", filter.getDeletedBy())
         .between("deletedAt", filter.getDeletedAtFrom(), filter.getDeletedAtTo())
         .build();
   }

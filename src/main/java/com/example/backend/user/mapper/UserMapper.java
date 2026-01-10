@@ -5,6 +5,7 @@ import com.example.backend.user.dto.CreateUserRequest;
 import com.example.backend.user.dto.UserDto;
 import com.example.backend.user.dto.UserFilter;
 import com.example.backend.user.dto.UserFilterRequest;
+import com.example.backend.user.dto.UserSuggestionDto;
 import com.example.backend.user.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -25,6 +26,8 @@ public abstract class UserMapper {
    */
   @Mapping(target = "permissions", source = "additionalPermissions")
   public abstract UserDto toDto(User user);
+
+  public abstract UserSuggestionDto toSuggestionDto(User user);
 
   /**
    * Converts CreateUserRequest to User entity. Password will be set separately after hashing.
