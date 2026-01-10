@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /** Repository interface for User entity operations. */
@@ -17,7 +18,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
    * @param username the username to search for
    * @return Optional containing the user if found
    */
-  Optional<User> findByUsername(String username);
+  Optional<User> findByUsername(@Param("username") String username);
 
   /**
    * Finds a user by email.
@@ -25,7 +26,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
    * @param email the email to search for
    * @return Optional containing the user if found
    */
-  Optional<User> findByEmail(String email);
+  Optional<User> findByEmail(@Param("email") String email);
 
   /**
    * Checks if a user exists with the given username.
@@ -33,7 +34,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
    * @param username the username to check
    * @return true if exists, false otherwise
    */
-  boolean existsByUsername(String username);
+  boolean existsByUsername(@Param("username") String username);
 
   /**
    * Checks if a user exists with the given email.
@@ -41,7 +42,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
    * @param email the email to check
    * @return true if exists, false otherwise
    */
-  boolean existsByEmail(String email);
+  boolean existsByEmail(@Param("email") String email);
 
   /**
    * Counts all users by active status.
@@ -49,7 +50,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
    * @param isActive the active status to filter by
    * @return count of users with the given active status
    */
-  long countByIsActive(boolean isActive);
+  long countByIsActive(@Param("isActive") boolean isActive);
 
   /**
    * Gets count of users grouped by role.

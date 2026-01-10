@@ -36,10 +36,10 @@ public class AuditLogFilterRequest {
   private String requestUri;
 
   @Schema(description = "Filter by HTTP method", example = "DELETE")
-  private String httpMethod;
+  private List<String> httpMethods;
 
   @Schema(description = "Filter by operation success status", example = "true")
-  private Boolean success;
+  private List<Boolean> success;
 
   @Schema(description = "Filter by multiple usernames", example = "[\"manager1\", \"clerk2\"]")
   private List<String> usernames;

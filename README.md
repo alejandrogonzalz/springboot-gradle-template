@@ -174,8 +174,8 @@ First, configure the project SDK. Open the **Project Structure** menu (**Ctrl + 
 
 Navigate to **Settings** (**Ctrl + Alt + S** on Windows) and configure the following under **Build, Execution, Deployment > Build Tools > Gradle**:
 
-* **Build and run using:** IntelliJ IDEA
-* **Run tests using:** IntelliJ IDEA
+* **Build and run using:** Gradle
+* **Run tests using:** Gradle
 * **Distribution:** Wrapper
 * **Gradle JVM:** Project SDK (Amazon Corretto 21.0.9)
 

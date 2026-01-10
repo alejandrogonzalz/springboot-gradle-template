@@ -58,3 +58,6 @@ wrapper/
 
 ### API Zodios schema ###
 src/api
+
+### Generated from mapper
+src/main/generated

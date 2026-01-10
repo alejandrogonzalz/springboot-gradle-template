@@ -21,8 +21,8 @@ public class AuditLogFilter {
   private Long entityId;
   private String ipAddress;
   private String requestUri;
-  private String httpMethod;
-  private Boolean success;
+  private List<String> httpMethods;
+  private List<Boolean> success;
   private List<String> usernames;
   private List<String> operations;
   private List<String> entityTypes;

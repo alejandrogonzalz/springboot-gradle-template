@@ -139,7 +139,7 @@ public class UserController {
     return ResponseEntity.ok(BaseResponse.success(deletedUser, "User deleted successfully"));
   }
 
-  @PostMapping("/{id}/restore")
+  @PatchMapping("/{id}/restore")
   @Operation(
       summary = "Restore deleted user",
       description = "Restores a soft-deleted user by clearing deletion fields")

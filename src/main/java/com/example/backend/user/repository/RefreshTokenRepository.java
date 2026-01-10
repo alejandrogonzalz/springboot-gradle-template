@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /** Repository for managing RefreshToken entities. */
@@ -28,7 +29,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
    */
   @Modifying
   @Query("DELETE FROM RefreshToken rt WHERE rt.token = :token")
-  void deleteByToken(String token);
+  void deleteByToken(@Param("token") String token);
 
   /**
    * Deletes all refresh tokens for a specific user.
@@ -37,7 +38,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
    */
   @Modifying
   @Query("DELETE FROM RefreshToken rt WHERE rt.user = :user")
-  void deleteByUser(User user);
+  void deleteByUser(@Param("user") User user);
 
   /**
    * Deletes all expired refresh tokens.
@@ -47,5 +48,5 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
    */
   @Modifying
   @Query("DELETE FROM RefreshToken rt WHERE rt.expiresAt < :now")
-  int deleteExpiredTokens(Instant now);
+  int deleteExpiredTokens(@Param("now") Instant now);
 }
